@@ -1,7 +1,5 @@
 // lib/features/shell/app_shell.dart
-// Kerangka navigasi bawah bergaya floating frosted-glass dock iOS.
-import 'dart:ui';
-
+// Kerangka navigasi gaya Cyra: dock hitam melayang berisi tombol bulat (5 tab, semua fitur tetap ada).
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
@@ -32,6 +30,14 @@ class _AppShellState extends State<AppShell> {
     SettingsScreen(),
   ];
 
+  static const _tabs = <(IconData, IconData, String)>[
+    (PhosphorIconsRegular.heartbeat, PhosphorIconsFill.heartbeat, 'Beranda'),
+    (PhosphorIconsRegular.calendarDots, PhosphorIconsFill.calendarDots, 'Kalender'),
+    (PhosphorIconsRegular.chartBar, PhosphorIconsFill.chartBar, 'Statistik'),
+    (PhosphorIconsRegular.users, PhosphorIconsFill.users, 'Pasangan'),
+    (PhosphorIconsRegular.gear, PhosphorIconsFill.gear, 'Setelan'),
+  ];
+
   @override
   Widget build(BuildContext context) => AppScaffold(
         body: AnimatedSwitcher(
@@ -41,112 +47,83 @@ class _AppShellState extends State<AppShell> {
           transitionBuilder: (child, animation) => FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.03),
-                end: Offset.zero,
-              ).animate(animation),
+              position: Tween<Offset>(begin: const Offset(0, 0.03), end: Offset.zero)
+                  .animate(animation),
               child: child,
             ),
           ),
-          child: KeyedSubtree(
-            key: ValueKey(_index),
-            child: _screens[_index],
-          ),
+          child: KeyedSubtree(key: ValueKey(_index), child: _screens[_index]),
         ),
         bottomNavigationBar: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadowDiffuse,
-                  blurRadius: 26,
-                  offset: Offset(0, 8),
-                  spreadRadius: -4,
-                ),
-                BoxShadow(
-                  color: AppColors.shadowContact,
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(32),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.glassWhite,
-                    borderRadius: BorderRadius.circular(32),
-                    border: Border.all(color: AppColors.cardBorder, width: 1.2),
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Center(
+            heightFactor: 1,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.dock,
+                borderRadius: BorderRadius.circular(40),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.dock.withValues(alpha: 0.28),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
                   ),
-                  child: NavigationBarTheme(
-                    data: NavigationBarThemeData(
-                      backgroundColor: Colors.transparent,
-                      indicatorColor: AppColors.petal,
-                      indicatorShape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: AppColors.ribbon, width: 1),
-                      ),
-                      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                        final selected = states.contains(WidgetState.selected);
-                        return TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          color: selected ? AppColors.rose : AppColors.mauveSoft,
-                          letterSpacing: -0.2,
-                        );
-                      }),
-                      iconTheme: WidgetStateProperty.resolveWith((states) {
-                        final selected = states.contains(WidgetState.selected);
-                        return IconThemeData(
-                          size: 22,
-                          color: selected ? AppColors.rose : AppColors.mauveSoft,
-                        );
-                      }),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < _tabs.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    _DockButton(
+                      icon: i == _index ? _tabs[i].$2 : _tabs[i].$1,
+                      label: _tabs[i].$3,
+                      selected: i == _index,
+                      onTap: () => setState(() => _index = i),
                     ),
-                    child: NavigationBar(
-                      selectedIndex: _index,
-                      onDestinationSelected: (i) => setState(() => _index = i),
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      height: 66,
-                      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                      destinations: const [
-                        NavigationDestination(
-                          icon: Icon(PhosphorIconsRegular.heartbeat),
-                          selectedIcon: Icon(PhosphorIconsFill.heartbeat, color: AppColors.rose),
-                          label: 'Beranda',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(PhosphorIconsRegular.calendarDots),
-                          selectedIcon: Icon(PhosphorIconsFill.calendarDots, color: AppColors.rose),
-                          label: 'Kalender',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(PhosphorIconsRegular.chartBar),
-                          selectedIcon: Icon(PhosphorIconsFill.chartBar, color: AppColors.rose),
-                          label: 'Statistik',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(PhosphorIconsRegular.users),
-                          selectedIcon: Icon(PhosphorIconsFill.users, color: AppColors.rose),
-                          label: 'Pasangan',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(PhosphorIconsRegular.gear),
-                          selectedIcon: Icon(PhosphorIconsFill.gear, color: AppColors.rose),
-                          label: 'Setelan',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                  ],
+                ],
               ),
             ),
           ),
         ).animate().fadeIn(duration: 350.ms),
+      );
+}
+
+class _DockButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _DockButton({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: Tooltip(
+          message: label,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected ? AppColors.rose : AppColors.white,
+              ),
+              child: Icon(icon, size: 22, color: selected ? AppColors.white : AppColors.mauve),
+            ),
+          ),
+        ),
       );
 }

@@ -37,7 +37,23 @@
 4. Satu peran per perangkat (pemilik ATAU pelihat).
 5. Input tes LH/BBT, widget Home/Lock Screen, ekspor PDF untuk dokter.
 
-## Validasi Kualitas (v0.3.2)
-- `flutter analyze`: **No issues found!**
+## Validasi Kualitas Terkini
+- `flutter analyze`: **No issues found! (0 warnings, 0 errors)**
 - `flutter test`: **49/49 lulus (100%)**
+- Arsitektur: Domain murni Dart tanpa import Flutter/UI.
+- Palet warna: 100% tersentralisasi di `AppColors` tanpa hardcode warna di fitur.
+- Audit & Bug Fixes:
+  - Sinkronisasi notifikasi real-time & waktu lokal 08:00 WIB terproteksi error handling di lingkungan test.
+  - Data wipe komprehensif (membersihkan period logs, notes, love notes, partner status, dan membatalkan semua notifikasi).
+  - Penyelarasan widget test & UI teruji menyeluruh.
 - Standar visual: Modern iOS / Dribbble / Figma Mobile Design
+
+
+## Redesain gaya Cyra (v0.4.0, belum dijalankan di perangkat)
+- Token `AppColors` diganti ke palet Cyra (nama token tetap): pink-koral, pastel biru/lilac/madu, teks hampir hitam; tambah `track` & `dock`.
+- `AppScaffold`: latar gradien pink -> putih. `PinkCard`: radius 30, tanpa border.
+- `CycleRing`: jalur abu + busur gradien + knob putih (gaya Cyra). Beranda: header sapaan, week strip (ketuk = catatan hari itu), teks tengah ring (Ovulasi dalam / Haid dalam / Haid terlambat), aksi bulat.
+- Navigasi: dock hitam melayang, 5 tombol bulat (tooltip = nama tab). Tes disesuaikan (`find.byTooltip`).
+- Belum diubah: struktur Kalender, Statistik, Pasangan, Setelan, Onboarding (hanya mewarisi token baru).
+- (lanjutan) Beranda: kartu vertikal diganti rail pastel yang bisa digeser (surat cinta, suasana hati/catatan, fase, masa subur, haid berikutnya); saran keterlambatan tetap kartu penuh di atas rail.
+- Kalender: sel tanggal persegi membulat, hari terpilih gradien pink, tombol bulan putih membulat. Statistik: tile ringkasan pastel, diagram dengan pita abu. `BowHeader` kini header gaya Cyra (tanpa pita).

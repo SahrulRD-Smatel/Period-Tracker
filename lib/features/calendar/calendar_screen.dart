@@ -55,23 +55,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       return Container(
         margin: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: bg,
-          shape: BoxShape.circle,
+          color: isSelected ? null : bg,
+          gradient: isSelected ? AppColors.primaryGradient : null,
+          borderRadius: BorderRadius.circular(16),
           border: isSelected
-              ? Border.all(color: AppColors.mauve, width: 2)
+              ? null
               : isToday
-                  ? Border.all(color: AppColors.rose, width: 2)
+                  ? Border.all(color: AppColors.mauve, width: 1.8)
                   : predictedPeriod
                       ? Border.all(color: AppColors.rose, width: 1.5)
                       : null,
-          boxShadow: (st != null && !predictedPeriod) || isSelected
-              ? [
-                  BoxShadow(
-                    color: (st?.color ?? AppColors.rose).withValues(alpha: 0.28),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
+          boxShadow: isSelected
+              ? const [BoxShadow(color: AppColors.shadowDiffuse, blurRadius: 10, offset: Offset(0, 4))]
               : null,
         ),
         alignment: Alignment.center,
@@ -82,7 +77,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             Text(
               '${day.day}',
               style: TextStyle(
-                color: fg,
+                color: isSelected ? AppColors.white : fg,
                 fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
               ),
             ),
@@ -149,22 +144,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               formatButtonVisible: false,
               titleCentered: true,
               titleTextStyle: kHeading.copyWith(fontSize: 18),
-              leftChevronIcon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: AppColors.petal,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(PhosphorIconsRegular.caretLeft, color: AppColors.rose, size: 16),
-              ),
-              rightChevronIcon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: AppColors.petal,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(PhosphorIconsRegular.caretRight, color: AppColors.rose, size: 16),
-              ),
+              leftChevronIcon: const _Chevron(PhosphorIconsRegular.caretLeft),
+              rightChevronIcon: const _Chevron(PhosphorIconsRegular.caretRight),
             ),
             daysOfWeekStyle: const DaysOfWeekStyle(
               weekdayStyle: TextStyle(
@@ -333,5 +314,23 @@ class _Legend extends StatelessWidget {
             ),
           ],
         ),
+      );
+}
+
+class _Chevron extends StatelessWidget {
+  final IconData icon;
+  const _Chevron(this.icon);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(color: AppColors.shadowContact, blurRadius: 10, offset: Offset(0, 4)),
+          ],
+        ),
+        child: Icon(icon, color: AppColors.mauve, size: 16),
       );
 }

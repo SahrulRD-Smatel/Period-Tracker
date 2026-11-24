@@ -1,6 +1,6 @@
 // lib/features/stats/cycle_bars.dart
 // Diagram batang panjang siklus modern (tanpa paket grafik).
-// Area pink muda = rentang normal 21-35 hari; garis putus-putus = rata-rata.
+// Area abu = rentang normal 21-35 hari; garis putus-putus = rata-rata.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -51,14 +51,14 @@ class CycleBarsPainter extends CustomPainter {
     // Rentang normal 21-35 hari dengan sudut melengkung halus
     final normalRect = Rect.fromLTRB(padL, y(35), size.width - padR, y(21));
     canvas.drawRRect(
-      RRect.fromRectAndRadius(normalRect, const Radius.circular(10)),
-      Paint()..color = AppColors.petal.withValues(alpha: 0.55),
+      RRect.fromRectAndRadius(normalRect, const Radius.circular(14)),
+      Paint()..color = AppColors.track,
     );
 
     // Batang-batang siklus
     final n = cycles.length;
     final slot = w / n;
-    final barW = math.min(26.0, slot * 0.62);
+    final barW = math.min(28.0, slot * 0.62);
 
     for (var i = 0; i < n; i++) {
       final c = cycles[i];
@@ -68,8 +68,10 @@ class CycleBarsPainter extends CustomPainter {
       final barRect = Rect.fromLTRB(cx - barW / 2, y(c.length), cx + barW / 2, y(0));
       final barRRect = RRect.fromRectAndCorners(
         barRect,
-        topLeft: const Radius.circular(8),
-        topRight: const Radius.circular(8),
+        topLeft: const Radius.circular(12),
+        topRight: const Radius.circular(12),
+        bottomLeft: const Radius.circular(4),
+        bottomRight: const Radius.circular(4),
       );
 
       final barPaint = Paint()

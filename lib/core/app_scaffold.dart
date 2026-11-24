@@ -35,16 +35,21 @@ class AppScaffold extends StatelessWidget {
                 ),
               )
             : null,
-        backgroundColor: background ?? AppColors.blush,
+        backgroundColor: background ?? AppColors.white,
         // SafeArea aman dipakai bersama AppBar / BottomNavigationBar:
         // Scaffold sudah menghapus inset yang ia tangani sendiri.
-        body: SafeArea(
+        body: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: background == null ? AppColors.canvasGradient : null,
+          ),
+          child: SafeArea(
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxWidth),
               child: body,
             ),
           ),
+        ),
         ),
       );
 }

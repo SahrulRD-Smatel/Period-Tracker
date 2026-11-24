@@ -95,7 +95,7 @@ void main() {
     await _pumpRomanticApp(tester);
 
     // Buka tab Pasangan
-    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Pasangan')));
+    await tester.tap(find.byTooltip('Pasangan'));
     await tester.pumpAndSettle();
 
     // Hubungkan pasangan demo

@@ -26,7 +26,7 @@ Future<void> pumpApp(WidgetTester tester, Map<String, Object> prefsValues) async
 }
 
 Future<void> openTab(WidgetTester tester, String label) async {
-  await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text(label)));
+  await tester.tap(find.byTooltip(label));
   await tester.pumpAndSettle();
 }
 

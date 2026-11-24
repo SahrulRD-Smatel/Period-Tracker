@@ -1,5 +1,6 @@
 // lib/features/home/cycle_ring.dart
-// Cincin siklus: satu busur per hari, diwarnai per fase, dengan penanda "hari ini" bercahaya.
+// Cincin siklus gaya Cyra: jalur abu, busur gradien pink berujung bulat sampai "hari ini",
+// dan knob putih berbingkai pink. dayColors tetap diterima (panjangnya = jumlah hari siklus).
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -16,70 +17,55 @@ class CycleRingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final n = dayColors.length;
     if (n == 0) return;
-    const stroke = 18.0;
-    const gap = 0.055;
+    const stroke = 30.0;
     final center = size.center(Offset.zero);
-    final radius = math.min(size.width, size.height) / 2 - stroke - 4;
+    final radius = math.min(size.width, size.height) / 2 - stroke / 2 - 10;
     final rect = Rect.fromCircle(center: center, radius: radius);
-    final sweep = 2 * math.pi / n;
 
-    // 1. Lingkaran dasar halus (track) di belakang busur
-    final trackPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..color = AppColors.petal.withValues(alpha: 0.45);
-    canvas.drawCircle(center, radius, trackPaint);
-
-    // 2. Busur-busur warna fase harian
-    final arc = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
-
-    for (var i = 0; i < n; i++) {
-      arc.color = dayColors[i];
-      canvas.drawArc(rect, -math.pi / 2 + i * sweep + gap / 2, sweep - gap, false, arc);
-    }
-
-    // 3. Penanda "Hari Ini" dengan efek glow mewah
-    final idx = math.min(math.max(currentIndex, 0), n - 1);
-    final angle = -math.pi / 2 + (idx + 0.5) * sweep;
-    final pos = center + Offset(math.cos(angle), math.sin(angle)) * radius;
-
-    // Halo cahaya luar
     canvas.drawCircle(
-      pos,
-      22,
-      Paint()..color = AppColors.rose.withValues(alpha: 0.22),
-    );
-    canvas.drawCircle(
-      pos,
-      17,
-      Paint()..color = AppColors.rose.withValues(alpha: 0.35),
-    );
-
-    // Manik utama putih dengan bayangan
-    canvas.drawCircle(
-      pos,
-      13,
-      Paint()
-        ..color = AppColors.white
-        ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 1),
-    );
-
-    // Border rose tegas
-    canvas.drawCircle(
-      pos,
-      13,
+      center,
+      radius,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5
-        ..color = AppColors.rose,
+        ..strokeWidth = stroke
+        ..color = AppColors.track,
     );
 
-    // Titik pusat rose berkilau
-    canvas.drawCircle(pos, 5, Paint()..color = AppColors.rose);
-    canvas.drawCircle(pos - const Offset(1.2, 1.2), 1.6, Paint()..color = AppColors.white);
+    final idx = math.min(math.max(currentIndex, 0), n - 1);
+    final sweep = 2 * math.pi * (idx + 1) / n;
+    canvas.drawArc(
+      rect,
+      -math.pi / 2,
+      sweep,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..shader = const SweepGradient(
+          colors: [AppColors.roseLight, AppColors.rose],
+          transform: GradientRotation(-math.pi / 2),
+        ).createShader(rect),
+    );
+
+    final angle = -math.pi / 2 + sweep;
+    final pos = center + Offset(math.cos(angle), math.sin(angle)) * radius;
+    canvas.drawCircle(
+      pos + const Offset(0, 3),
+      20,
+      Paint()
+        ..color = AppColors.shadowDiffuse
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+    canvas.drawCircle(pos, 20, Paint()..color = AppColors.white);
+    canvas.drawCircle(
+      pos,
+      17.5,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..color = AppColors.rose,
+    );
   }
 
   @override
@@ -97,7 +83,7 @@ class CycleRing extends StatelessWidget {
     required this.dayColors,
     required this.currentIndex,
     required this.center,
-    this.size = 246,
+    this.size = 240,
   });
 
   @override
@@ -107,21 +93,6 @@ class CycleRing extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Cahaya ambient lembut di dalam cincin
-            Container(
-              width: size * 0.72,
-              height: size * 0.72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppColors.petal.withValues(alpha: 0.4),
-                    Colors.transparent,
-                  ],
-                  radius: 0.85,
-                ),
-              ),
-            ),
             CustomPaint(
               size: Size.square(size),
               painter: CycleRingPainter(dayColors: dayColors, currentIndex: currentIndex),

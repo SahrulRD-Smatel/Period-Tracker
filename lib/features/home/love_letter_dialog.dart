@@ -20,7 +20,7 @@ Future<void> showLoveLetterModal(BuildContext context, WidgetRef ref, LoveNote n
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+    backgroundColor: AppColors.transparent,
     builder: (ctx) => _LoveLetterSheet(note: note),
   );
 }
@@ -42,7 +42,7 @@ class _LoveLetterSheet extends ConsumerWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x1FDD869E),
+            color: AppColors.dialogShadow,
             blurRadius: 24,
             offset: Offset(0, 8),
           ),

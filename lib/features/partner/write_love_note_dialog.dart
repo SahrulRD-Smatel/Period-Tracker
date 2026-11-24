@@ -13,7 +13,7 @@ Future<void> showWriteLoveNoteModal(BuildContext context) =>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
       builder: (ctx) => const _WriteLoveNoteSheet(),
     );
 
@@ -73,7 +73,7 @@ class _WriteLoveNoteSheetState extends ConsumerState<_WriteLoveNoteSheet> {
         border: Border.all(color: AppColors.petal, width: 2),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x1FDD869E),
+            color: AppColors.dialogShadow,
             blurRadius: 20,
             offset: Offset(0, 6),
           ),

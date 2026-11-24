@@ -126,6 +126,7 @@ class _SummaryGrid extends StatelessWidget {
                 icon: PhosphorIconsRegular.arrowsClockwise,
                 label: 'Rata-rata siklus',
                 value: avg,
+                tone: AppColors.petal,
               ),
             ),
             const SizedBox(width: 12),
@@ -134,6 +135,7 @@ class _SummaryGrid extends StatelessWidget {
                 icon: PhosphorIconsRegular.arrowsLeftRight,
                 label: 'Rentang siklus',
                 value: range,
+                tone: AppColors.peach,
               ),
             ),
           ],
@@ -146,6 +148,7 @@ class _SummaryGrid extends StatelessWidget {
                 icon: PhosphorIconsFill.drop,
                 label: 'Lama haid',
                 value: period,
+                tone: AppColors.lilac,
               ),
             ),
             const SizedBox(width: 12),
@@ -154,6 +157,7 @@ class _SummaryGrid extends StatelessWidget {
                 icon: PhosphorIconsRegular.chartLineUp,
                 label: 'Keteraturan',
                 value: regularityLabel(stats.regularity),
+                tone: AppColors.honey.withValues(alpha: 0.55),
               ),
             ),
           ],
@@ -192,7 +196,7 @@ class _ChartCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Area pink muda = rentang normal 21–35 hari. Garis putus-putus = rata-rata. '
+            'Area abu = rentang normal 21–35 hari. Garis putus-putus = rata-rata. '
             'Label bulan = bulan siklus dimulai.',
             style: kSmall,
           ),

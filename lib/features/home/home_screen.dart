@@ -118,7 +118,7 @@ class _EmptyState extends ConsumerWidget {
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [AppColors.petal, Color(0xFFFFD4E2)],
+                      colors: [AppColors.petal, AppColors.petalGradientEnd],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -198,7 +198,7 @@ class _RingCard extends StatelessWidget {
             center: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Hari ke-', style: kMicroCaps),
+                const Text('Hari ke-', style: kSmall),
                 const SizedBox(height: 2),
                 Text(
                   '${summary.cycleDay}',
@@ -269,9 +269,9 @@ class _CountdownCard extends StatelessWidget {
               icon: PhosphorIconsFill.drop,
               color: AppColors.rose,
               onColor: AppColors.white,
-              size: 52,
+              size: 48,
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +281,7 @@ class _CountdownCard extends StatelessWidget {
                     style: kSmall.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 2),
-                  Text(_big, style: kHeading.copyWith(fontSize: 28, letterSpacing: -0.8)),
+                  Text(_big, style: kHeading.copyWith(fontSize: 26, letterSpacing: -0.8)),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -334,9 +334,9 @@ class _FertileCard extends StatelessWidget {
             icon: PhosphorIconsFill.sparkle,
             color: AppColors.lilac,
             onColor: AppColors.mauve,
-            size: 52,
+            size: 48,
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,7 +500,7 @@ class _LoveLetterEnvelopeCard extends ConsumerWidget {
     if (note == null) return const SizedBox.shrink();
 
     return Material(
-      color: Colors.transparent,
+      color: AppColors.transparent,
       child: InkWell(
         onTap: () => showLoveLetterModal(context, ref, note),
         borderRadius: BorderRadius.circular(28),
@@ -514,7 +514,7 @@ class _LoveLetterEnvelopeCard extends ConsumerWidget {
                   gradient: LinearGradient(
                     colors: note.isRead
                         ? [AppColors.blush, AppColors.petal]
-                        : [AppColors.petal, Color(0xFFFFD4E2)],
+                        : [AppColors.petal, AppColors.petalGradientEnd],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),

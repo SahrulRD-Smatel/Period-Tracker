@@ -22,7 +22,7 @@ class PinkCard extends StatelessWidget {
     this.color = AppColors.white,
     this.gradient,
     this.border,
-    this.borderRadius = 26,
+    this.borderRadius = 30,
     this.customShadow,
   });
 
@@ -37,7 +37,7 @@ class PinkCard extends StatelessWidget {
         color: effectiveGradient == null ? color : null,
         gradient: effectiveGradient,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: border ?? Border.all(color: AppColors.cardBorder, width: 1.2),
+        border: border,
         boxShadow: customShadow ??
             const [
               BoxShadow(
@@ -147,36 +147,23 @@ class BowHeader extends StatelessWidget {
     this.trailing,
   });
 
+  // Gaya Cyra: judul besar tebal + subjudul abu, tanpa ornamen pita.
   @override
   Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.petal, Color(0xFFFFD4E2)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.white, width: 1.5),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadowDiffuse,
-                  blurRadius: 10,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: const CoquetteBow(size: 24),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: kHeading.copyWith(fontSize: 24, letterSpacing: -0.5)),
+                Text(
+                  title,
+                  style: kHeading.copyWith(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.8,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(subtitle, style: kSmall),
               ],
@@ -383,7 +370,7 @@ class PinkChoiceChip extends StatelessWidget {
             gradient: selected ? AppColors.primaryGradient : null,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: selected ? Colors.transparent : AppColors.ribbon,
+              color: selected ? AppColors.transparent : AppColors.ribbon,
               width: 1.4,
             ),
             boxShadow: selected
@@ -548,49 +535,56 @@ class SwitchRow extends StatelessWidget {
 class StatTile extends StatelessWidget {
   final IconData icon;
   final String label, value;
-  const StatTile({super.key, required this.icon, required this.label, required this.value});
+  final Color tone; // warna pastel kartu (putih = kartu biasa)
+  const StatTile({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.tone = AppColors.white,
+  });
 
   @override
-  Widget build(BuildContext context) => PinkCard(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: AppColors.petal,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, size: 15, color: AppColors.rose),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: kSmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: kHeading.copyWith(
-                fontSize: 22,
-                letterSpacing: -0.6,
-                fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final bubble =
+        tone == AppColors.white ? AppColors.petal : AppColors.white.withValues(alpha: 0.7);
+    return PinkCard(
+      color: tone,
+      padding: const EdgeInsets.all(14),
+      customShadow: tone == AppColors.white ? null : const [],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: bubble, shape: BoxShape.circle),
+                child: Icon(icon, size: 15, color: AppColors.rose),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: kSmall.copyWith(fontWeight: FontWeight.w600, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: kHeading.copyWith(
+              fontSize: 22,
+              letterSpacing: -0.6,
+              fontWeight: FontWeight.w800,
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ActionRow extends StatelessWidget {

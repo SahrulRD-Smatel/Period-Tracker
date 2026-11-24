@@ -24,6 +24,10 @@ class _MensAppState extends ConsumerState<MensApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Jadwalkan notifikasi saat pertama kali app aktif
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncNotifications();
+    });
   }
 
   @override
@@ -32,29 +36,51 @@ class _MensAppState extends ConsumerState<MensApp> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  void _syncNotifications() {
+    final prediction = ref.read(predictionProvider);
+    final settings = ref.read(settingsProvider);
+    if (prediction != null && (settings.remindPeriod || settings.remindFertile)) {
+      NotificationScheduler.scheduleFromPrediction(prediction, settings);
+    } else if (!settings.remindPeriod && !settings.remindFertile) {
+      NotificationScheduler.cancelAll();
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Hitung ulang "hari ini" setiap aplikasi kembali ke foreground (ganti hari).
     if (state == AppLifecycleState.resumed) {
+      // Hitung ulang "hari ini" setiap aplikasi kembali ke foreground (ganti hari)
       ref.invalidate(todayProvider);
       // Kunci layar bila fitur kunci aktif
       if (ref.read(settingsProvider).appLock) {
         setState(() => _locked = true);
       }
-    }
-    // Re-schedule notifikasi setiap kali app aktif kembali
-    if (state == AppLifecycleState.resumed) {
-      final prediction = ref.read(predictionProvider);
-      final settings = ref.read(settingsProvider);
-      if (prediction != null && (settings.remindPeriod || settings.remindFertile)) {
-        NotificationScheduler.scheduleFromPrediction(prediction, settings);
-      }
+      _syncNotifications();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+
+    // Dengarkan perubahan prediksi dan setelan secara real-time
+    ref.listen(predictionProvider, (_, next) {
+      final s = ref.read(settingsProvider);
+      if (next != null && (s.remindPeriod || s.remindFertile)) {
+        NotificationScheduler.scheduleFromPrediction(next, s);
+      } else if (!s.remindPeriod && !s.remindFertile) {
+        NotificationScheduler.cancelAll();
+      }
+    });
+
+    ref.listen(settingsProvider, (_, next) {
+      final p = ref.read(predictionProvider);
+      if (p != null && (next.remindPeriod || next.remindFertile)) {
+        NotificationScheduler.scheduleFromPrediction(p, next);
+      } else if (!next.remindPeriod && !next.remindFertile) {
+        NotificationScheduler.cancelAll();
+      }
+    });
 
     return MaterialApp(
       title: 'Siklusku',
