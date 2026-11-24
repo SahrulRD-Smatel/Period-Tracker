@@ -1,0 +1,76 @@
+// RANCANGAN (belum aktif): implementasi nyata PartnerRepository dengan Supabase.
+// Untuk mengaktifkan:
+//   1. flutter pub add supabase_flutter ; inisialisasi Supabase di main.dart
+//   2. jalankan SQL + RLS dari docs/ARSITEKTUR.md bagian 5
+//   3. pindahkan berkas ini ke lib/data/supabase_partner_repository.dart (ubah ekstensi .dart)
+//   4. di application/providers.dart ganti partnerRepositoryProvider ke SupabasePartnerRepository
+// Penyaringan data yang dibagikan SUDAH ada di domain: buildSnapshot() (partner_models.dart).
+import 'dart:math';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../domain/partner_models.dart';
+import 'partner_repository.dart';
+
+class SupabasePartnerRepository implements PartnerRepository {
+  final SupabaseClient _db;
+  SupabasePartnerRepository(this._db);
+
+  String get _uid => _db.auth.currentUser!.id;
+  static const _alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  @override
+  Future<PartnerState> createInvite() async {
+    final rnd = Random.secure();
+    final code = List.generate(8, (_) => _alphabet[rnd.nextInt(_alphabet.length)]).join();
+    final expires = DateTime.now().toUtc().add(const Duration(hours: 24));
+    await _db.from('invites').insert({
+      'code': code,
+      'owner_id': _uid,
+      'expires_at': expires.toIso8601String(),
+    });
+    return PartnerState(role: PartnerRole.owner, inviteCode: code, inviteExpires: expires);
+  }
+
+  @override
+  Future<PartnerState> acceptInvite(String code) async {
+    try {
+      await _db.rpc('accept_invite', params: {'p_code': code.trim().toUpperCase()});
+    } on PostgrestException {
+      throw const FormatException('Kode tidak valid atau sudah kedaluwarsa.');
+    }
+    // TODO: ambil snapshot terbaru: select dari cycle_snapshots (dibatasi RLS)
+    return const PartnerState(role: PartnerRole.viewer, linked: true);
+  }
+
+  @override
+  Future<void> saveFlags(ShareFlags flags) async {
+    // TODO: simpan flags (kolom di partner_links), lalu panggil pushSnapshot() agar data tersaring ulang
+  }
+
+  @override
+  Future<PartnerState> revoke() async {
+    await _db.from('partner_links').update({'status': 'revoked'}).or('owner_id.eq.$_uid,partner_id.eq.$_uid');
+    return const PartnerState();
+  }
+
+  @override
+  Future<PartnerState> simulateAccepted(PartnerState current) =>
+      throw UnsupportedError('Hanya untuk demo');
+
+  /// Dipanggil setiap data berubah (pemilik). Snapshot sudah disaring oleh buildSnapshot().
+  Future<void> pushSnapshot(PartnerSnapshot s) async {
+    String? iso(DateTime? d) => d?.toIso8601String().substring(0, 10);
+    await _db.from('cycle_snapshots').upsert({
+      'owner_id': _uid,
+      'phase': s.phase?.name,
+      'cycle_day': s.cycleDay,
+      'lateness': s.lateness?.name,
+      'next_period': iso(s.nextPeriod),
+      'fertile_start': iso(s.fertileStart),
+      'fertile_end': iso(s.fertileEnd),
+      'ovulation': iso(s.ovulation),
+      'updated_at': s.updatedAt.toUtc().toIso8601String(),
+    });
+  }
+}
