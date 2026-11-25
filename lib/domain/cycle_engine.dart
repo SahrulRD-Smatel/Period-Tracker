@@ -110,12 +110,48 @@ class CyclePrediction {
   }
 }
 
+/// Menggabungkan input ganda dalam episode haid yang sama (< [minGapDays] hari).
+/// Setiap episode memakai tanggal mulai paling awal dan tanggal selesai terjauh yang valid.
+List<PeriodLog> normalizePeriodLogs(List<PeriodLog> logs, {int minGapDays = 15}) {
+  if (logs.isEmpty) return const [];
+  final sorted = [
+    for (final l in logs)
+      PeriodLog(
+        start: dateOnly(l.start),
+        end: l.end == null || dateOnly(l.end!).isBefore(dateOnly(l.start))
+            ? null
+            : dateOnly(l.end!),
+      ),
+  ]..sort((a, b) => a.start.compareTo(b.start));
+
+  final out = <PeriodLog>[];
+  var groupStart = sorted.first.start;
+  var groupEnd = sorted.first.end;
+
+  for (final l in sorted.skip(1)) {
+    if (l.start.difference(groupStart).inDays < minGapDays) {
+      if (l.end != null) {
+        if (groupEnd == null || l.end!.isAfter(groupEnd)) groupEnd = l.end;
+      } else if (groupEnd != null && l.start.isAfter(groupEnd)) {
+        // Ada catatan mulai baru setelah tanggal selesai di episode yang sama tanpa tanggal selesai.
+        groupEnd = null;
+      }
+    } else {
+      out.add(PeriodLog(start: groupStart, end: groupEnd));
+      groupStart = l.start;
+      groupEnd = l.end;
+    }
+  }
+  out.add(PeriodLog(start: groupStart, end: groupEnd));
+  return out;
+}
+
 class CycleEngine {
   final CycleSettings s;
   const CycleEngine([this.s = const CycleSettings()]);
 
   List<DateTime> _starts(List<PeriodLog> logs) =>
-      (logs.map((l) => dateOnly(l.start)).toSet().toList()..sort());
+      [for (final l in normalizePeriodLogs(logs)) l.start];
 
   /// Jarak antar hari pertama haid berurutan.
   /// <15 hari  = kemungkinan spotting / input ganda  -> diabaikan
@@ -174,13 +210,15 @@ class CycleEngine {
     DateTime? confirmedOvulation,
     int monthsAhead = 3,
   }) {
-    if (logs.isEmpty) return null;
+    final clean = normalizePeriodLogs(logs);
+    if (clean.isEmpty) return null;
 
-    final last = _starts(logs).last;
-    final lengths = cycleLengths(logs);
+    final lastLog = clean.last;
+    final last = lastLog.start;
+    final lengths = cycleLengths(clean);
     final recent = lengths.length > 6 ? lengths.sublist(lengths.length - 6) : lengths;
     final cycleLen = estimateCycleLength(lengths);
-    final periodLen = estimatePeriodLength(logs);
+    final periodLen = estimatePeriodLength(clean);
     final sd = _stdDev(recent);
 
     var margin = recent.length < 3 ? 3 : math.min(7, math.max(2, sd.ceil()));
@@ -201,7 +239,12 @@ class CycleEngine {
       margin = 2;
     }
 
-    final windows = <CycleWindow>[_window(last, next, ovulation, periodLen)];
+    final currentPeriodEnd = (lastLog.end != null && !lastLog.end!.isBefore(last))
+        ? (lastLog.end!.isBefore(next) ? lastLog.end! : _plus(next, -1))
+        : null;
+    final windows = <CycleWindow>[
+      _window(last, next, ovulation, periodLen, explicitPeriodEnd: currentPeriodEnd),
+    ];
     final horizon = _plus(next, monthsAhead * 31);
     var start = next;
     while (start.isBefore(horizon)) {
@@ -221,10 +264,16 @@ class CycleEngine {
     );
   }
 
-  CycleWindow _window(DateTime start, DateTime next, DateTime ov, int periodLen) =>
+  CycleWindow _window(
+    DateTime start,
+    DateTime next,
+    DateTime ov,
+    int periodLen, {
+    DateTime? explicitPeriodEnd,
+  }) =>
       CycleWindow(
         periodStart: start,
-        periodEnd: _plus(start, periodLen - 1),
+        periodEnd: explicitPeriodEnd ?? _plus(start, periodLen - 1),
         nextPeriodStart: next,
         ovulation: ov,
         fertileStart: _plus(ov, -5), // sperma bertahan hingga ~5 hari

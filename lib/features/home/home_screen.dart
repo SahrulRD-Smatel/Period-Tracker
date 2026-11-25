@@ -13,6 +13,7 @@ import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../domain/cycle_engine.dart';
 import '../../domain/cycle_sync.dart';
+import '../../domain/day_view.dart';
 import '../../domain/home_summary.dart';
 import '../log/log_screen.dart';
 import 'cycle_ring.dart';
@@ -25,24 +26,39 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final today = ref.watch(todayProvider);
+    final selected = ref.watch(selectedHomeDateProvider);
     final logs = ref.watch(periodLogsProvider);
     final p = ref.watch(predictionProvider);
-    final s = ref.watch(homeSummaryProvider);
+    final s = ref.watch(homeSummaryOnSelectedDateProvider);
 
     final Widget body;
     if (logs.isEmpty) {
       body = const _EmptyState();
-    } else if (p == null || s == null) {
+    } else if (p == null) {
       body = const PinkCard(
         child: Text(
           'Data belum bisa dihitung. Periksa tanggal perangkat atau catatan haidmu.',
           style: kSmall,
         ),
       );
+    } else if (s == null) {
+      body = Column(
+        children: [
+          _OutOfRangeDateCard(
+            selectedDate: selected,
+            today: today,
+            prediction: p,
+          ),
+          const SizedBox(height: 14),
+          _LogActions(selectedDate: selected),
+          const SizedBox(height: 16),
+          _FeelOnlyRail(selectedDate: selected),
+        ],
+      );
     } else {
       body = Column(
         children: [
-          _RingCard(prediction: p, summary: s)
+          _RingCard(prediction: p, summary: s, viewedDate: selected)
               .animate()
               .scale(
                 begin: const Offset(0.94, 0.94),
@@ -51,7 +67,7 @@ class HomeScreen extends ConsumerWidget {
               )
               .fadeIn(duration: 350.ms),
           const SizedBox(height: 14),
-          const _LogActions()
+          _LogActions(selectedDate: selected)
               .animate(delay: 70.ms)
               .fadeIn(duration: 320.ms)
               .slideY(begin: 0.05, curve: Curves.easeOut),
@@ -63,7 +79,7 @@ class HomeScreen extends ConsumerWidget {
                 .slideY(begin: 0.05, curve: Curves.easeOut),
           ],
           const SizedBox(height: 16),
-          _CardRail(summary: s)
+          _CardRail(summary: s, selectedDate: selected)
               .animate(delay: 140.ms)
               .fadeIn(duration: 320.ms)
               .slideY(begin: 0.05, curve: Curves.easeOut),
@@ -74,12 +90,12 @@ class HomeScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
       children: [
-        _HomeHeader(today: today)
+        _HomeHeader(today: today, selectedDate: selected)
             .animate()
             .fadeIn(duration: 280.ms)
             .slideY(begin: -0.04, curve: Curves.easeOut),
         const SizedBox(height: 10),
-        _WeekStrip(today: today),
+        _WeekStrip(today: today, selectedDate: selected),
         const SizedBox(height: 12),
         body,
         const SizedBox(height: 18),
@@ -155,6 +171,13 @@ class _EmptyState extends ConsumerWidget {
       );
 }
 
+CycleWindow _windowFor(CyclePrediction p, DateTime d) {
+  for (final w in p.windows) {
+    if (w.contains(d)) return w;
+  }
+  return p.current;
+}
+
 List<Color> _ringColors(CycleWindow w) {
   final n = w.nextPeriodStart.difference(w.periodStart).inDays;
   return [
@@ -166,13 +189,17 @@ List<Color> _ringColors(CycleWindow w) {
 class _RingCard extends StatelessWidget {
   final CyclePrediction prediction;
   final HomeSummary summary;
-  const _RingCard({required this.prediction, required this.summary});
+  final DateTime viewedDate;
+  const _RingCard({
+    required this.prediction,
+    required this.summary,
+    required this.viewedDate,
+  });
 
   ({String label, String big, String pill}) _center() {
     final s = summary;
     final d = s.daysUntilPeriod;
-    final today = prediction.current.periodStart.add(Duration(days: s.cycleDay - 1));
-    final toOv = s.ovulation?.difference(today).inDays;
+    final toOv = s.ovulation?.difference(viewedDate).inDays;
 
     if (d < 0) {
       return (label: 'Haid terlambat', big: '${-d} hari', pill: 'Catat bila sudah datang');
@@ -203,13 +230,14 @@ class _RingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final st = phaseStyle(summary.phase);
     final c = _center();
+    final win = _windowFor(prediction, viewedDate);
     return PinkCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
         children: [
           CycleRing(
             size: 204,
-            dayColors: _ringColors(prediction.current),
+            dayColors: _ringColors(win),
             currentIndex: summary.cycleDay - 1,
             center: Column(
               mainAxisSize: MainAxisSize.min,
@@ -300,14 +328,15 @@ class _PastelCard extends StatelessWidget {
 /// Rail kartu yang bisa digeser: surat cinta (bila ada), suasana hati, fase, masa subur, haid berikutnya.
 class _CardRail extends ConsumerWidget {
   final HomeSummary summary;
-  const _CardRail({required this.summary});
+  final DateTime selectedDate;
+  const _CardRail({required this.summary, required this.selectedDate});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasLetter = ref.watch(activeLoveNoteProvider) != null;
     final cards = <Widget>[
       if (hasLetter) const _LoveLetterEnvelopeCard(),
-      const _FeelCard(),
+      _FeelCard(selectedDate: selectedDate),
       _PhaseCard(summary: summary),
       _FertileCard(summary: summary),
       _CountdownCard(summary: summary),
@@ -325,6 +354,83 @@ class _CardRail extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _FeelOnlyRail extends ConsumerWidget {
+  final DateTime selectedDate;
+  const _FeelOnlyRail({required this.selectedDate});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasLetter = ref.watch(activeLoveNoteProvider) != null;
+    final cards = <Widget>[
+      if (hasLetter) const _LoveLetterEnvelopeCard(),
+      _FeelCard(selectedDate: selectedDate),
+    ];
+    return LayoutBuilder(
+      builder: (context, box) {
+        final w = cards.length == 1 ? box.maxWidth : box.maxWidth * 0.78;
+        return SizedBox(
+          height: 184,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: cards.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, i) => SizedBox(width: w, child: cards[i]),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _OutOfRangeDateCard extends ConsumerWidget {
+  final DateTime selectedDate;
+  final DateTime today;
+  final CyclePrediction prediction;
+  const _OutOfRangeDateCard({
+    required this.selectedDate,
+    required this.today,
+    required this.prediction,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final beforeStart = selectedDate.isBefore(prediction.lastPeriodStart);
+    final title = beforeStart
+        ? 'Belum ada data haid pada ${fmtDayMonth(selectedDate)}'
+        : 'Perkiraan ${fmtDayMonth(selectedDate)} belum tersedia';
+    final subtitle = beforeStart
+        ? 'Haid terakhirmu tercatat mulai ${fmtDayMonth(prediction.lastPeriodStart)}.'
+        : 'Haid belum tercatat melewati jadwal (${fmtDayMonth(prediction.nextPeriod)}).';
+
+    return PinkCard(
+      child: Column(
+        children: [
+          Text(title, textAlign: TextAlign.center, style: kHeading.copyWith(fontSize: 18)),
+          const SizedBox(height: 6),
+          Text(subtitle, textAlign: TextAlign.center, style: kSmall),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              if (beforeStart && !selectedDate.isAfter(today))
+                FilledButton(
+                  onPressed: () => logPeriodStart(context, ref, selectedDate),
+                  child: Text('Mulai haid ${fmtDayMonth(selectedDate)}'),
+                ),
+              OutlinedButton(
+                onPressed: () => ref.read(selectedHomeDateProvider.notifier).resetToToday(),
+                child: const Text('Kembali ke hari ini'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -466,13 +572,25 @@ class _AdviceCard extends StatelessWidget {
 }
 
 class _LogActions extends ConsumerWidget {
-  const _LogActions();
+  final DateTime selectedDate;
+  const _LogActions({required this.selectedDate});
+
+  void _warnFuture(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Tanggal ${fmtDayMonth(selectedDate)} belum tiba. Ketuk "Ke hari ini" untuk mencatat.',
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final logs = ref.watch(periodLogsProvider);
     final today = ref.watch(todayProvider);
-    final endable = activeOpenPeriod(logs, today);
+    final isFuture = selectedDate.isAfter(today);
+    final endable = isFuture ? null : activeOpenPeriod(logs, selectedDate);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,7 +600,9 @@ class _LogActions extends ConsumerWidget {
             icon: PhosphorIconsFill.drop,
             label: 'Haid mulai',
             filled: true,
-            onTap: () => logPeriodStart(context, ref, today),
+            onTap: () => isFuture
+                ? _warnFuture(context)
+                : logPeriodStart(context, ref, selectedDate),
           ),
         ),
         Expanded(
@@ -498,11 +618,11 @@ class _LogActions extends ConsumerWidget {
               icon: PhosphorIconsFill.checkCircle,
               label: 'Haid selesai',
               onTap: () async {
-                await ref.read(periodLogsProvider.notifier).setEnd(endable.start, today);
+                await ref.read(periodLogsProvider.notifier).setEnd(endable.start, selectedDate);
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Tercatat: haid selesai ${fmtDayMonth(today)} 🌸'),
+                    content: Text('Tercatat: haid selesai ${fmtDayMonth(selectedDate)} 🌸'),
                   ),
                 );
               },
@@ -512,7 +632,7 @@ class _LogActions extends ConsumerWidget {
           child: _CircleAction(
             icon: PhosphorIconsRegular.plus,
             label: 'Tambah gejala',
-            onTap: () => openLog(context, today),
+            onTap: () => isFuture ? _warnFuture(context) : openLog(context, selectedDate),
           ),
         ),
       ],
@@ -577,22 +697,32 @@ class _CircleAction extends StatelessWidget {
 }
 
 class _FeelCard extends ConsumerWidget {
-  const _FeelCard();
+  final DateTime selectedDate;
+  const _FeelCard({required this.selectedDate});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final today = ref.watch(todayProvider);
-    final note = ref.watch(notesProvider)[today];
+    final isFuture = selectedDate.isAfter(today);
+    final isToday = selectedDate == today;
+    final note = ref.watch(notesProvider)[selectedDate];
     return _PastelCard(
       color: AppColors.peach,
-      tag: 'Bagaimana perasaanmu?',
-      onTap: () => openLog(context, today),
+      tag: isToday ? 'Bagaimana perasaanmu?' : 'Catatan ${fmtDayMonth(selectedDate)}',
+      onTap: isFuture ? null : () => openLog(context, selectedDate),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (note == null)
+          if (isFuture)
             Text(
-              'Belum ada catatan. Gejala atau suasana hatimu hari ini?',
+              'Perkiraan untuk ${fmtDayMonth(selectedDate)}. Catatan harian bisa diisi mulai hari itu.',
+              style: kSmall.copyWith(color: AppColors.mauve),
+            )
+          else if (note == null)
+            Text(
+              isToday
+                  ? 'Belum ada catatan. Gejala atau suasana hatimu hari ini?'
+                  : 'Belum ada catatan pada ${fmtDayMonth(selectedDate)}.',
               style: kSmall.copyWith(color: AppColors.mauve),
             )
           else
@@ -607,21 +737,23 @@ class _FeelCard extends ConsumerWidget {
                 if (note.note.isNotEmpty) const TagChip('📝 ada catatan'),
               ],
             ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(PhosphorIconsRegular.plus, size: 16, color: AppColors.mauve),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  note == null ? 'Catat gejala & mood' : 'Ubah catatan',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: kSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.mauve),
+          if (!isFuture) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(PhosphorIconsRegular.plus, size: 16, color: AppColors.mauve),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    note == null ? 'Catat gejala & mood' : 'Ubah catatan',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: kSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.mauve),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -685,14 +817,16 @@ class _LoveLetterEnvelopeCard extends ConsumerWidget {
   }
 }
 
-class _HomeHeader extends StatelessWidget {
+class _HomeHeader extends ConsumerWidget {
   final DateTime today;
-  const _HomeHeader({required this.today});
+  final DateTime selectedDate;
+  const _HomeHeader({required this.today, required this.selectedDate});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hr = DateTime.now().hour;
     final sal = hr < 11 ? 'pagi' : hr < 15 ? 'siang' : hr < 18 ? 'sore' : 'malam';
+    final isToday = selectedDate == today;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -709,33 +843,98 @@ class _HomeHeader extends StatelessWidget {
             color: AppColors.white,
           ),
         ),
-        Text(fmtFull(today), style: kSmall.copyWith(color: AppColors.whiteSoft)),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                fmtFull(selectedDate),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: kSmall.copyWith(color: AppColors.whiteSoft),
+              ),
+            ),
+            if (!isToday) ...[
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => ref.read(selectedHomeDateProvider.notifier).resetToToday(),
+                borderRadius: BorderRadius.circular(99),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.24),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(color: AppColors.whiteSoft),
+                  ),
+                  child: Text(
+                    'Ke hari ini',
+                    style: kSmall.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ],
     );
   }
 }
 
-/// Strip 7 hari (hari ini di tengah). Ketuk hari yang sudah lewat / hari ini untuk membuka catatan.
-class _WeekStrip extends StatelessWidget {
+/// Strip 7 hari (hari ini di tengah).
+/// Ketuk tanggal lain untuk melihat ringkasan siklusnya; ketuk lagi tanggal terpilih untuk mencatat.
+class _WeekStrip extends ConsumerWidget {
   final DateTime today;
-  const _WeekStrip({required this.today});
+  final DateTime selectedDate;
+  const _WeekStrip({required this.today, required this.selectedDate});
 
   static const _w = ['S', 'S', 'R', 'K', 'J', 'S', 'M']; // Senin..Minggu
 
-  Widget _chip(BuildContext context, DateTime d, bool sel) {
-    final enabled = !d.isAfter(today);
+  Widget _chip(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime d, {
+    required bool sel,
+    required bool isToday,
+    required bool hasPeriod,
+    required bool hasNote,
+  }) {
+    final isFuture = d.isAfter(today);
+    final dotColor = hasPeriod
+        ? (sel ? AppColors.white : AppColors.rose)
+        : hasNote
+            ? (sel ? AppColors.whiteSoft : AppColors.mauveSoft)
+            : null;
     return Semantics(
-      button: enabled,
-      label: 'Catatan ${fmtDayMonth(d)}',
+      button: true,
+      selected: sel,
+      label: 'Tanggal ${fmtDayMonth(d)}',
       child: InkWell(
-        onTap: enabled ? () => openLog(context, d) : null,
+        onTap: () {
+          if (!sel) {
+            ref.read(selectedHomeDateProvider.notifier).select(d);
+          } else if (!isFuture) {
+            openLog(context, d);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Pratinjau perkiraan ${fmtDayMonth(d)}. Catatan harian tersedia mulai hari itu.',
+                ),
+              ),
+            );
+          }
+        },
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 7),
           decoration: BoxDecoration(
             gradient: sel ? AppColors.primaryGradient : null,
             color: sel ? null : AppColors.white,
             borderRadius: BorderRadius.circular(18),
+            border: !sel && isToday ? Border.all(color: AppColors.roseLight, width: 1.5) : null,
             boxShadow: const [
               BoxShadow(color: AppColors.shadowContact, blurRadius: 10, offset: Offset(0, 4)),
             ],
@@ -756,8 +955,18 @@ class _WeekStrip extends StatelessWidget {
                 style: kHeading.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
-                  color: sel ? AppColors.white : AppColors.mauve,
+                  color: sel
+                      ? AppColors.white
+                      : (isFuture ? AppColors.mauveSoft : AppColors.mauve),
                 ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                width: 4.5,
+                height: 4.5,
+                decoration: dotColor == null
+                    ? null
+                    : BoxDecoration(color: dotColor, shape: BoxShape.circle),
               ),
             ],
           ),
@@ -767,12 +976,43 @@ class _WeekStrip extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          for (var k = -3; k <= 3; k++) ...[
-            if (k > -3) const SizedBox(width: 8),
-            Expanded(child: _chip(context, today.add(Duration(days: k)), k == 0)),
-          ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final engine = ref.watch(cycleEngineProvider);
+    final logs = ref.watch(periodLogsProvider);
+    final prediction = ref.watch(predictionProvider);
+    final notes = ref.watch(notesProvider);
+
+    return Row(
+      children: [
+        for (var k = -3; k <= 3; k++) ...[
+          if (k > -3) const SizedBox(width: 8),
+          Builder(
+            builder: (_) {
+              final d = dateOnly(today.add(Duration(days: k)));
+              final dv = dayViewFor(
+                d,
+                engine: engine,
+                logs: logs,
+                prediction: prediction,
+                today: today,
+              );
+              final hasPeriod = dv != null && dv.phase == CyclePhase.menstrual && dv.logged;
+              final hasNote = notes[d] != null;
+              return Expanded(
+                child: _chip(
+                  context,
+                  ref,
+                  d,
+                  sel: d == selectedDate,
+                  isToday: d == today,
+                  hasPeriod: hasPeriod,
+                  hasNote: hasNote,
+                ),
+              );
+            },
+          ),
         ],
-      );
+      ],
+    );
+  }
 }

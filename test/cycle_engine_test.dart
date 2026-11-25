@@ -71,4 +71,16 @@ void main() {
     expect(c(30), CycleOutcome.onTime);
     expect(c(35), CycleOutcome.late);
   });
+
+  test('input ganda <15 hari digabungkan ke hari pertama episode & hormati end eksplisit', () {
+    final merged = engine.predict([
+      PeriodLog(start: d(11, 21)),
+      PeriodLog(start: d(11, 25), end: d(11, 25)),
+    ])!;
+    expect(merged.lastPeriodStart, d(11, 21));
+    expect(merged.current.periodEnd, d(11, 25));
+    expect(engine.infoOn(merged, d(11, 25), today: d(11, 25))!.cycleDay, 5);
+    expect(engine.infoOn(merged, d(11, 25), today: d(11, 25))!.phase, CyclePhase.menstrual);
+    expect(engine.infoOn(merged, d(11, 26), today: d(11, 25))!.phase, CyclePhase.follicular);
+  });
 }

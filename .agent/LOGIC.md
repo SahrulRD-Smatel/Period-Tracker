@@ -75,6 +75,7 @@ Ubah `cycle_engine.dart` → tambah/ubah tes di `test/cycle_engine_test.dart` �
 
 ## 10b. Sinkronisasi Log ↔ Siklus (`domain/cycle_sync.dart`)
 - `latestConfirmedOvulation(logs, notes)` membaca `DayNote.ovulationPositive` terbaru pada siklus berjalan untuk disalurkan ke `CycleEngine.predict(confirmedOvulation: ...)`.
+- `normalizePeriodLogs(logs)` & `setPeriodStart(logs, date)` menggabungkan input ganda dalam episode yang sama (`<15` hari) dan memindahkan hari pertama episode bila pengguna mengoreksi tanggal mulai via *Pilih tanggal*, sementara `CycleEngine.predict` menghormati `end` eksplisit pada siklus berjalan agar Beranda dan Kalender selalu selaras.
 - `shouldAutoStartPeriod`, `logContainingDate`, dan `activeOpenPeriod` menjaga agar pencatatan aliran haid di `LogScreen` serta tanda selesai haid di `CalendarScreen`/`HomeScreen` konsisten tanpa menciptakan siklus ganda <15 hari.
 
 ## 11. Setelan → engine

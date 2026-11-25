@@ -21,7 +21,7 @@ DayView? dayViewFor(
   final d = dateOnly(date), t = dateOnly(today);
   final periodLen = prediction?.periodLength ?? engine.s.defaultPeriodLength;
 
-  for (final l in logs) {
+  for (final l in normalizePeriodLogs(logs)) {
     final s = dateOnly(l.start);
     final e = l.end != null ? dateOnly(l.end!) : s.add(Duration(days: periodLen - 1));
     if (!d.isBefore(s) && !d.isAfter(e)) {

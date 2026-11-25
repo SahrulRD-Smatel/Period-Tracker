@@ -10,6 +10,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:period_tracker/app.dart';
 import 'package:period_tracker/application/providers.dart';
 import 'package:period_tracker/domain/app_settings.dart';
+import 'package:period_tracker/domain/backup.dart';
 import 'package:period_tracker/domain/cycle_engine.dart';
 import 'package:period_tracker/domain/cycle_sync.dart';
 import 'package:period_tracker/domain/day_note.dart';
@@ -48,6 +49,30 @@ void main() {
       final logs = [PeriodLog(start: d(2026, 4, 1))];
       expect(activeOpenPeriod(logs, d(2026, 4, 4))?.start, d(2026, 4, 1));
       expect(activeOpenPeriod([PeriodLog(start: d(2026, 4, 1), end: d(2026, 4, 4))], d(2026, 4, 4)), isNull);
+    });
+
+    test('setPeriodStart menggeser hari mulai dalam episode yang sama tanpa duplikat', () {
+      // Skenario pengguna: tgl 25 terlanjur tercatat, lalu memilih tgl 21 sebagai hari pertama haid
+      final res = setPeriodStart(
+        [PeriodLog(start: d(2026, 11, 25), end: d(2026, 11, 25))],
+        d(2026, 11, 21),
+      );
+      expect(res.status, PeriodStartStatus.movedEpisode);
+      expect(res.previousStart, d(2026, 11, 25));
+      expect(res.logs.single.start, d(2026, 11, 21));
+      expect(res.logs.single.end, d(2026, 11, 25));
+
+      // Siklus sebelumnya (>= 15 hari lalu) tidak ikut terhapus
+      final multi = setPeriodStart(
+        [
+          PeriodLog(start: d(2026, 10, 24), end: d(2026, 10, 28)),
+          PeriodLog(start: d(2026, 11, 25)),
+        ],
+        d(2026, 11, 21),
+      );
+      expect(multi.logs.length, 2);
+      expect(multi.logs.first.start, d(2026, 10, 24));
+      expect(multi.logs.last.start, d(2026, 11, 21));
     });
   });
 
@@ -207,6 +232,70 @@ void main() {
       // Setelah PIN benar -> masuk ke Beranda
       expect(find.text('Siklusku terkunci'), findsNothing);
       expect(find.text('Catat haid terakhir'), findsOneWidget);
+    });
+
+    testWidgets('Mulai 21 Nov + Pilih tanggal memperbarui ke hari ke-5 & strip mingguan interaktif',
+        (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final nov25 = DateTime.utc(2026, 11, 25);
+      final settingsDone = jsonEncode(const AppSettings(onboardingDone: true).toJson());
+      // Kondisi bug: tercatat start 25 Nov (hari ke-1), pengguna memilih 21 Nov lewat "Pilih tanggal"
+      final rawLogs = exportBackup([PeriodLog(start: nov25, end: nov25)]);
+      SharedPreferences.setMockInitialValues({
+        'app_settings_v1': settingsDone,
+        'period_logs_v1': rawLogs,
+      });
+      final prefs = await SharedPreferences.getInstance();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPrefsProvider.overrideWithValue(prefs),
+            todayProvider.overrideWithValue(nov25),
+          ],
+          child: const MensApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Awalnya hari ke-1
+      expect(find.text('Hari haid ke-'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+
+      // Buka "Pilih tanggal", pilih tgl 21 Nov, tekan OKE
+      await tester.tap(find.text('Pilih tanggal'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('21'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OKE'));
+      await tester.pumpAndSettle();
+
+      // Langsung menjadi Hari haid ke-5!
+      expect(find.text('Hari haid ke-'), findsOneWidget);
+      expect(find.text('5'), findsOneWidget);
+
+      // Strip mingguan di Beranda: ketuk tgl 24 -> menjadi Hari haid ke-4 & muncul tombol 'Ke hari ini'
+      await tester.tap(find.text('24'));
+      await tester.pumpAndSettle();
+      expect(find.text('4'), findsOneWidget);
+      expect(find.text('Ke hari ini'), findsOneWidget);
+
+      // Ketuk tgl 26 (masa folikular) -> ring berpindah ke Ovulasi dalam ...
+      await tester.tap(find.text('26'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ovulasi dalam'), findsOneWidget);
+      expect(find.text('Fase folikular'), findsOneWidget);
+
+      // Ketuk 'Ke hari ini' -> kembali ke Hari haid ke-5 pada 25 Nov
+      await tester.tap(find.text('Ke hari ini'));
+      await tester.pumpAndSettle();
+      expect(find.text('5'), findsOneWidget);
     });
   });
 }

@@ -2,9 +2,9 @@
 
 ## Sudah ada (UI Cyra terpadu + Keterhubungan Lokal Penuh + Sync 2 HP Supabase)
 - **Beranda Gaya Cyra Terpadu (`home_screen.dart` + `cycle_ring.dart`)**:
-  - Sapaan personal + strip mingguan 7 hari (ketuk tanggal untuk catat hari itu).
-  - Cincin siklus ber-halo dengan tengah cincin yang kontekstual (`Hari haid ke-N` saat menstruasi, `Ovulasi dalam` sebelum ovulasi, `Haid dalam` di fase luteal, `Haid terlambat` saat lewat jadwal).
-  - 4 tombol aksi bulat (`Haid mulai`, `Pilih tanggal`, `Haid selesai`, `Tambah gejala`) tanpa overflow + rail kartu geser pastel (`Surat Cinta`, `Bagaimana perasaanmu?`, `Fase`, `Masa subur`, `Haid berikutnya`).
+  - Sapaan personal + strip mingguan 7 hari interaktif (ketuk tanggal lain untuk meninjau fase/ringkasan hari itu dan catatannya, ketuk lagi untuk membuka catatan harian, plus tombol cepat *Ke hari ini*).
+  - Cincin siklus ber-halo dengan tengah cincin yang kontekstual (`Hari haid ke-N` saat menstruasi, `Ovulasi dalam` sebelum ovulasi, `Haid dalam` di fase luteal, `Haid terlambat` saat lewat jadwal) dan konsisten dengan tanggal selesai eksplisit.
+  - 4 tombol aksi bulat (`Haid mulai` dengan konfirmasi bila sudah dalam episode aktif, `Pilih tanggal` yang memperbarui hari pertama episode secara bersih, `Haid selesai`, `Tambah gejala`) tanpa overflow + rail kartu geser pastel (`Surat Cinta`, `Bagaimana perasaanmu?`, `Fase`, `Masa subur`, `Haid berikutnya`).
 - **Keterhubungan Penuh Antar Fitur Lokal**:
   - **Aliran Haid & Tes Ovulasi ↔ Siklus/Kalender**: Mencatat aliran haid di `LogScreen` menawarkan/menandai otomatis hari pertama atau selesai haid ke `periodLogsProvider`; hasil tes ovulasi positif (+) terhubung ke `CycleEngine.predict(confirmedOvulation: ...)`.
   - **Kalender**: Bisa menandai/mereset tanggal *Haid selesai* dan menampilkan indikator tes ovulasi positif.

@@ -125,24 +125,44 @@ final cycleEngineProvider = Provider<CycleEngine>(
 /// Tanggal "hari ini" (UTC, tanpa jam). Di-invalidate saat aplikasi kembali ke foreground.
 final todayProvider = Provider<DateTime>((ref) => dateOnly(DateTime.now()));
 
+/// Tanggal yang sedang dipilih di strip mingguan Beranda (default = hari ini).
+class SelectedHomeDateNotifier extends Notifier<DateTime> {
+  @override
+  DateTime build() => ref.watch(todayProvider);
+
+  void select(DateTime date) => state = dateOnly(date);
+  void resetToToday() => state = ref.read(todayProvider);
+}
+
+final selectedHomeDateProvider =
+    NotifierProvider<SelectedHomeDateNotifier, DateTime>(SelectedHomeDateNotifier.new);
+
 // ---------- riwayat haid ----------
 class PeriodLogsNotifier extends Notifier<List<PeriodLog>> {
   @override
-  List<PeriodLog> build() =>
-      [...ref.watch(cycleRepositoryProvider).load()]..sort((a, b) => a.start.compareTo(b.start));
+  List<PeriodLog> build() => normalizePeriodLogs(ref.watch(cycleRepositoryProvider).load());
 
   Future<void> _commit(List<PeriodLog> logs) async {
-    logs.sort((a, b) => a.start.compareTo(b.start));
-    state = List.unmodifiable(logs);
+    state = List.unmodifiable(normalizePeriodLogs(logs));
     await ref.read(cycleRepositoryProvider).save(state);
   }
 
-  /// false bila tanggal itu sudah tercatat.
+  /// false bila tanggal itu sudah tercatat sebagai hari pertama episode tersebut.
   Future<bool> addStart(DateTime date) async {
-    final d = dateOnly(date);
-    if (state.any((l) => dateOnly(l.start) == d)) return false;
-    await _commit([...state, PeriodLog(start: d)]);
-    return true;
+    final res = await setOrUpdateStart(date);
+    return res.status != PeriodStartStatus.alreadyRecorded;
+  }
+
+  /// Mengatur hari pertama haid. Bila ada log di episode yang sama (< 15 hari),
+  /// tanggal mulainya diperbarui/digabungkan agar tidak muncul siklus ganda.
+  Future<({PeriodStartStatus status, DateTime? previousStart})> setOrUpdateStart(
+    DateTime date,
+  ) async {
+    final res = setPeriodStart(state, date);
+    if (res.status != PeriodStartStatus.alreadyRecorded) {
+      await _commit(res.logs);
+    }
+    return (status: res.status, previousStart: res.previousStart);
   }
 
   Future<void> setEnd(DateTime start, DateTime? end) async {
@@ -211,6 +231,18 @@ final homeSummaryProvider = Provider<HomeSummary?>((ref) {
   final p = ref.watch(predictionProvider);
   if (p == null) return null;
   return summarizeHome(ref.watch(cycleEngineProvider), p, ref.watch(todayProvider));
+});
+
+/// Ringkasan Beranda untuk tanggal yang dipilih di strip mingguan.
+final homeSummaryOnSelectedDateProvider = Provider<HomeSummary?>((ref) {
+  final p = ref.watch(predictionProvider);
+  if (p == null) return null;
+  return summarizeHome(
+    ref.watch(cycleEngineProvider),
+    p,
+    ref.watch(todayProvider),
+    onDate: ref.watch(selectedHomeDateProvider),
+  );
 });
 
 final statsProvider = Provider<CycleStats>(

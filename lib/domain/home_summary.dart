@@ -32,22 +32,38 @@ class HomeSummary {
   });
 }
 
-/// Null bila tanggal [today] sebelum haid terakhir yang tercatat (data tak masuk akal).
-HomeSummary? summarizeHome(CycleEngine engine, CyclePrediction p, DateTime today) {
+/// Null bila tanggal [onDate] (atau [today]) sebelum haid terakhir atau di luar rentang yang dapat dihitung.
+HomeSummary? summarizeHome(
+  CycleEngine engine,
+  CyclePrediction p,
+  DateTime today, {
+  DateTime? onDate,
+}) {
   final t = dateOnly(today);
-  final info = engine.infoOn(p, t, today: t);
+  final d = dateOnly(onDate ?? today);
+  final info = engine.infoOn(p, d, today: t);
   if (info == null) return null;
 
   // Saat haid terlambat, ovulasi siklus ini tidak bisa diperkirakan -> sembunyikan.
   final overdue = t.isAfter(p.nextPeriod);
-  final w = overdue ? null : p.upcomingFertileWindow(t);
+  final w = overdue ? null : p.upcomingFertileWindow(d);
+  CycleWindow? winForDate;
+  if (!overdue) {
+    for (final cw in p.windows) {
+      if (cw.contains(d)) {
+        winForDate = cw;
+        break;
+      }
+    }
+  }
+  final targetNextPeriod = winForDate?.nextPeriodStart ?? p.nextPeriod;
 
   var status = FertileStatus.unknown;
   var daysToFertile = 0;
   if (w != null) {
-    if (t.isBefore(w.fertileStart)) {
+    if (d.isBefore(w.fertileStart)) {
       status = FertileStatus.upcoming;
-      daysToFertile = w.fertileStart.difference(t).inDays;
+      daysToFertile = w.fertileStart.difference(d).inDays;
     } else {
       status = FertileStatus.ongoing;
     }
@@ -56,11 +72,15 @@ HomeSummary? summarizeHome(CycleEngine engine, CyclePrediction p, DateTime today
   return HomeSummary(
     cycleDay: info.cycleDay,
     phase: info.phase,
-    daysUntilPeriod: p.nextPeriod.difference(t).inDays,
-    nextPeriod: p.nextPeriod,
-    periodEarliest: p.nextPeriodEarliest,
-    periodLatest: p.nextPeriodLatest,
-    lateness: engine.assessLateness(p, t),
+    daysUntilPeriod: overdue && !d.isBefore(p.nextPeriod)
+        ? p.nextPeriod.difference(d).inDays
+        : targetNextPeriod.difference(d).inDays,
+    nextPeriod: targetNextPeriod,
+    periodEarliest: targetNextPeriod.add(Duration(days: -p.marginDays)),
+    periodLatest: targetNextPeriod.add(Duration(days: p.marginDays)),
+    lateness: overdue && !d.isBefore(p.nextPeriod)
+        ? engine.assessLateness(p, t)
+        : Lateness.none,
     confidence: p.confidence,
     fertileStatus: status,
     daysUntilFertile: daysToFertile,

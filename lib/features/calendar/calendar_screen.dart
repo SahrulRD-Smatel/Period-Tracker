@@ -93,17 +93,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
             if ((v != null && v.phase == CyclePhase.ovulation) || (note?.ovulationPositive ?? false))
               const Positioned(
-                top: 1,
+                top: 2,
                 right: 3,
-                child: Icon(PhosphorIconsFill.sparkle, size: 10, color: AppColors.mauve),
+                child: Icon(PhosphorIconsFill.sparkle, size: 9, color: AppColors.mauve),
               ),
             if (v != null && v.isFertile && v.phase == CyclePhase.menstrual)
               Positioned(
-                bottom: 3,
+                bottom: 2,
                 left: 8,
                 child: Container(
-                  width: 6,
-                  height: 6,
+                  width: 5,
+                  height: 5,
                   decoration: BoxDecoration(
                     color: AppColors.lilac,
                     shape: BoxShape.circle,
@@ -113,11 +113,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ),
             if (hasNote)
               Positioned(
-                bottom: 3,
+                bottom: 2,
                 right: 8,
                 child: Container(
-                  width: 6,
-                  height: 6,
+                  width: 5,
+                  height: 5,
                   decoration: const BoxDecoration(color: AppColors.mauve, shape: BoxShape.circle),
                 ),
               ),
@@ -192,6 +192,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   ) {
     final d = dateOnly(day);
     final isStart = logs.any((l) => dateOnly(l.start) == d);
+    final sameEpisode = findSameEpisodeLog(logs, d);
     final containing = logContainingDate(logs, d, defaultPeriodLen: defaultPeriodLen);
     final openPeriod = activeOpenPeriod(logs, d);
     final DayNote? note = ref.read(notesProvider)[d];
@@ -319,9 +320,21 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       : OutlinedButton(
                           onPressed: () {
                             Navigator.of(sheetContext).pop();
-                            logPeriodStart(context, ref, d);
+                            logPeriodStart(
+                              context,
+                              ref,
+                              d,
+                              confirmForwardShift:
+                                  sameEpisode != null && d.isAfter(sameEpisode.start),
+                            );
                           },
-                          child: const Text('Tandai haid mulai di sini'),
+                          child: Text(
+                            sameEpisode == null
+                                ? 'Tandai haid mulai di sini'
+                                : d.isBefore(sameEpisode.start)
+                                    ? 'Jadikan hari pertama haid'
+                                    : 'Geser hari pertama haid ke sini',
+                          ),
                         ),
                 ),
                 const SizedBox(height: 8),

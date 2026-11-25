@@ -44,4 +44,13 @@ void main() {
   test('tanggal sebelum haid terakhir -> null', () {
     expect(summarizeHome(engine, r, DateTime.utc(2025, 12, 31)), isNull);
   });
+
+  test('onDate meninjau tanggal lain di strip mingguan termasuk lintas siklus berikutnya', () {
+    // start 1 Jan -> nextPeriod 29 Jan. Hari ini 27 Jan, tinjau 30 Jan (hari ke-2 siklus berikutnya).
+    final s = summarizeHome(engine, r, d(1, 27), onDate: d(1, 30))!;
+    expect(s.cycleDay, 2);
+    expect(s.phase, CyclePhase.menstrual);
+    expect(s.daysUntilPeriod, 27); // ke 26 Feb
+    expect(s.lateness, Lateness.none);
+  });
 }
