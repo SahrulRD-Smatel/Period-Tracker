@@ -68,18 +68,23 @@ class SupabaseConnectedNotifier extends Notifier<bool> {
   bool build() => SupabaseService.isInitialized;
 
   Future<void> connect(ServerConfig config) async {
+    final enabledCfg = config.copyWith(cloudEnabled: true);
     await SupabaseService.connect(
-      url: config.supabaseUrl,
-      publishableKey: config.supabaseAnonKey,
+      url: enabledCfg.supabaseUrl,
+      publishableKey: enabledCfg.supabaseAnonKey,
     );
-    await ref.read(serverConfigProvider.notifier).save(config);
+    await ref.read(serverConfigProvider.notifier).save(enabledCfg);
     state = true;
   }
 
   Future<void> disconnect() async {
     await SupabaseService.disconnect();
     await ref.read(serverConfigProvider.notifier).save(
-          ref.read(serverConfigProvider).copyWith(supabaseUrl: '', supabaseAnonKey: ''),
+          ref.read(serverConfigProvider).copyWith(
+                supabaseUrl: '',
+                supabaseAnonKey: '',
+                cloudEnabled: false,
+              ),
         );
     state = false;
   }

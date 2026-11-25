@@ -10,6 +10,7 @@ import '../../application/providers.dart';
 import '../../core/dialogs.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../../data/supabase_partner_repository.dart';
 import '../../domain/partner_models.dart';
 import '../home/love_letter_dialog.dart';
 import 'partner_widgets.dart';
@@ -95,6 +96,7 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
     final repo = ref.watch(partnerRepositoryProvider);
     final cfg = ref.watch(serverConfigProvider);
     final isDemo = repo.isDemo;
+    final authErr = isDemo ? null : SupabaseService.lastAuthError;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -103,11 +105,13 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
         const SizedBox(height: 14),
         PinkCard(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          color: isDemo ? AppColors.petal : AppColors.blush,
+          color: (isDemo || authErr != null) ? AppColors.petal : AppColors.blush,
           child: Row(
             children: [
               Icon(
-                isDemo ? PhosphorIconsRegular.flask : PhosphorIconsFill.cloudCheck,
+                isDemo
+                    ? PhosphorIconsRegular.flask
+                    : (authErr != null ? PhosphorIconsRegular.warning : PhosphorIconsFill.cloudCheck),
                 color: AppColors.rose,
               ),
               const SizedBox(width: 12),
@@ -118,13 +122,15 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
                     Text(
                       isDemo
                           ? 'Mode lokal (1 HP)'
-                          : 'Sinkronisasi 2 HP Aktif (${cfg.displayName})',
+                          : authErr != null
+                              ? 'Konfigurasi Auth Supabase'
+                              : 'Sinkronisasi 2 HP Aktif (${cfg.displayName})',
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
                     ),
                     Text(
                       isDemo
                           ? 'Siap dicoba di HP ini. Hubungkan Supabase untuk sinkronisasi 2 HP nyata.'
-                          : 'Perubahan fase, privasi & surat cinta tersinkron real-time.',
+                          : authErr ?? 'Perubahan fase, privasi & surat cinta tersinkron real-time.',
                       style: kSmall.copyWith(fontSize: 12),
                     ),
                   ],

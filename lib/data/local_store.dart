@@ -149,38 +149,51 @@ class PrefsPartnerStateRepository implements PartnerStateRepository {
   Future<void> clear() => _prefs.remove(_key);
 }
 
-const kDefaultSupabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const kDefaultSupabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+const kDefaultSupabaseUrl = String.fromEnvironment(
+  'SUPABASE_URL',
+  defaultValue: 'https://cmkhribdlgcqmchommke.supabase.co',
+);
+const kDefaultSupabaseAnonKey = String.fromEnvironment(
+  'SUPABASE_ANON_KEY',
+  defaultValue: 'sb_publishable_PUWijKYNxCqhkOimuw0Vow_fX-yN5Aj',
+);
 
 class ServerConfig {
   final String supabaseUrl;
   final String supabaseAnonKey;
   final String displayName;
+  final bool cloudEnabled;
 
   const ServerConfig({
     this.supabaseUrl = '',
     this.supabaseAnonKey = '',
     this.displayName = 'Pasangan',
+    this.cloudEnabled = true,
   });
 
   bool get isConfigured =>
-      supabaseUrl.trim().startsWith('https://') && supabaseAnonKey.trim().isNotEmpty;
+      cloudEnabled &&
+      supabaseUrl.trim().startsWith('https://') &&
+      supabaseAnonKey.trim().isNotEmpty;
 
   ServerConfig copyWith({
     String? supabaseUrl,
     String? supabaseAnonKey,
     String? displayName,
+    bool? cloudEnabled,
   }) =>
       ServerConfig(
         supabaseUrl: supabaseUrl ?? this.supabaseUrl,
         supabaseAnonKey: supabaseAnonKey ?? this.supabaseAnonKey,
         displayName: displayName ?? this.displayName,
+        cloudEnabled: cloudEnabled ?? this.cloudEnabled,
       );
 
   Map<String, dynamic> toJson() => {
         'supabaseUrl': supabaseUrl.trim(),
         'supabaseAnonKey': supabaseAnonKey.trim(),
         'displayName': displayName.trim().isEmpty ? 'Pasangan' : displayName.trim(),
+        'cloudEnabled': cloudEnabled,
       };
 
   factory ServerConfig.fromJson(Map<dynamic, dynamic> j) => ServerConfig(
@@ -189,6 +202,7 @@ class ServerConfig {
         displayName: (j['displayName'] as String?)?.trim().isNotEmpty == true
             ? (j['displayName'] as String).trim()
             : 'Pasangan',
+        cloudEnabled: j['cloudEnabled'] as bool? ?? true,
       );
 }
 
@@ -209,11 +223,12 @@ class PrefsServerConfigRepository implements ServerConfigRepository {
       return const ServerConfig(
         supabaseUrl: kDefaultSupabaseUrl,
         supabaseAnonKey: kDefaultSupabaseAnonKey,
+        cloudEnabled: true,
       );
     }
     try {
       final parsed = ServerConfig.fromJson(jsonDecode(raw) as Map);
-      if (!parsed.isConfigured && kDefaultSupabaseUrl.isNotEmpty) {
+      if (parsed.cloudEnabled && !parsed.isConfigured && kDefaultSupabaseUrl.isNotEmpty) {
         return parsed.copyWith(
           supabaseUrl: kDefaultSupabaseUrl,
           supabaseAnonKey: kDefaultSupabaseAnonKey,
@@ -224,6 +239,7 @@ class PrefsServerConfigRepository implements ServerConfigRepository {
       return const ServerConfig(
         supabaseUrl: kDefaultSupabaseUrl,
         supabaseAnonKey: kDefaultSupabaseAnonKey,
+        cloudEnabled: true,
       );
     }
   }

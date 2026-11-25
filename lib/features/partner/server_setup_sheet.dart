@@ -249,8 +249,9 @@ class _ServerSetupSheetState extends ConsumerState<_ServerSetupSheet> {
         const SnackBar(content: Text('Sinkronisasi 2 HP nyata aktif! 🌐🎀')),
       );
     } catch (e) {
+      final rawMsg = e.toString();
       if (mounted) {
-        setState(() => _error = 'Gagal terhubung: $e');
+        setState(() => _error = rawMsg.replaceFirst('FormatException: ', ''));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

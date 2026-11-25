@@ -17,6 +17,7 @@ class SupabaseService {
   static bool _initialized = false;
   static String _activeUrl = '';
   static String _activeKey = '';
+  static String? lastAuthError;
 
   static bool get isInitialized => _initialized;
   static String get activeUrl => _activeUrl;
@@ -39,6 +40,7 @@ class SupabaseService {
       throw const FormatException('URL harus diawali https:// dan Anon/Publishable Key wajib diisi.');
     }
 
+    lastAuthError = null;
     if (_initialized && _activeUrl == cleanUrl && _activeKey == cleanKey) {
       await ensureSignedIn();
       return true;
@@ -65,6 +67,7 @@ class SupabaseService {
 
   /// Putuskan koneksi server di sesi aktif.
   static Future<void> disconnect() async {
+    lastAuthError = null;
     if (_initialized) {
       try {
         await Supabase.instance.dispose();
@@ -78,15 +81,31 @@ class SupabaseService {
   /// Pastikan perangkat punya identitas anonim Supabase (`auth.uid()`) yang persisten.
   static Future<User> ensureSignedIn() async {
     final auth = client.auth;
-    if (auth.currentUser != null) return auth.currentUser!;
-    final res = await auth.signInAnonymously();
-    final user = res.user;
-    if (user == null) {
-      throw const FormatException(
-        'Gagal login anonim ke Supabase. Pastikan "Anonymous Sign-Ins" aktif di dashboard Supabase Auth.',
-      );
+    if (auth.currentUser != null) {
+      lastAuthError = null;
+      return auth.currentUser!;
     }
-    return user;
+    try {
+      final res = await auth.signInAnonymously();
+      final user = res.user;
+      if (user == null) {
+        const msg = 'Gagal membuat sesi anonim Supabase.';
+        lastAuthError = msg;
+        throw const FormatException(msg);
+      }
+      lastAuthError = null;
+      return user;
+    } on AuthException catch (e) {
+      if (e.code == 'anonymous_provider_disabled' ||
+          e.message.toLowerCase().contains('anonymous')) {
+        const msg =
+            'Aktifkan "Allow anonymous sign-ins" di Supabase Dashboard (Authentication > Providers) agar 2 HP bisa terhubung tanpa login email.';
+        lastAuthError = msg;
+        throw const FormatException(msg);
+      }
+      lastAuthError = e.message;
+      throw FormatException(e.message);
+    }
   }
 }
 
@@ -163,11 +182,12 @@ class SupabasePartnerRepository extends PartnerRepository {
         }
       }
 
-      // 2. Cek apakah ada undangan yang masih berlaku
+      // 2. Cek apakah ada undangan yang masih berlaku dan belum terpakai
       final invite = await _db
           .from('invites')
           .select()
           .eq('owner_id', uid)
+          .isFilter('used_at', null)
           .gt('expires_at', DateTime.now().toUtc().toIso8601String())
           .order('created_at', ascending: false)
           .limit(1)

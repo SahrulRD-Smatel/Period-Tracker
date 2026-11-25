@@ -110,6 +110,26 @@ void main() {
       expect(back.flags.fertileWindow, isFalse);
       expect(back.snapshot?.phase, CyclePhase.menstrual);
     });
+
+    test('ServerConfig memuat project Supabase Period Tracker bawaan dan menghormati mode lokal', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPrefsProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      final initial = container.read(serverConfigProvider);
+      expect(initial.isConfigured, isTrue);
+      expect(initial.supabaseUrl, contains('cmkhribdlgcqmchommke.supabase.co'));
+
+      await container.read(serverConfigProvider.notifier).save(
+            initial.copyWith(supabaseUrl: '', supabaseAnonKey: '', cloudEnabled: false),
+          );
+      final afterDisconnect = container.read(serverConfigRepositoryProvider).load();
+      expect(afterDisconnect.isConfigured, isFalse);
+      expect(afterDisconnect.cloudEnabled, isFalse);
+    });
   });
 
   group('widget integration fixes', () {
