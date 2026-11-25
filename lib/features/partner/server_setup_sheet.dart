@@ -433,10 +433,10 @@ class _ServerSetupSheetState extends ConsumerState<_ServerSetupSheet> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 const SizedBox(height: 6),
                 const Text(
-                  '1. Buat project gratis di supabase.com\n'
-                  '2. Masuk Authentication > Providers > aktifkan "Allow anonymous sign-ins"\n'
-                  '3. Masuk SQL Editor > tempel & jalankan SQL Schema di bawah ini\n'
-                  '4. Masukkan Project URL & Publishable/Anon Key yang sama di kedua HP',
+                  '1. URL & skema tabel bawaan "Period Tracker" sudah terpasang otomatis\n'
+                  '2. Buka Supabase Dashboard > Authentication > Sign In / Providers\n'
+                  '3. Nyalakan "Allow anonymous sign-ins" lalu klik Save\n'
+                  '4. (Opsional jika pakai project sendiri) Salin & jalankan SQL Schema di bawah ini di SQL Editor',
                   style: kSmall,
                 ),
                 const SizedBox(height: 10),

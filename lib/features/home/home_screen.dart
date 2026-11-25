@@ -696,9 +696,20 @@ class _HomeHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Hai, selamat $sal', style: kSmall),
-        Text('Siklusku', style: kHeading.copyWith(fontSize: 26, fontWeight: FontWeight.w800)),
-        Text(fmtFull(today), style: kSmall),
+        Text(
+          'Hai, selamat $sal',
+          style: kSmall.copyWith(color: AppColors.whiteSoft, fontWeight: FontWeight.w500),
+        ),
+        Text(
+          'Siklusku',
+          style: kHeading.copyWith(
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.8,
+            color: AppColors.white,
+          ),
+        ),
+        Text(fmtFull(today), style: kSmall.copyWith(color: AppColors.whiteSoft)),
       ],
     );
   }

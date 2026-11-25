@@ -69,6 +69,25 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
     }
   }
 
+  Future<void> _retryAuth() async {
+    setState(() => _busy = true);
+    try {
+      await SupabaseService.ensureSignedIn();
+      await ref.read(partnerProvider.notifier).syncWithServer();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Terhubung ke server 2 HP Supabase! 🌐🎀')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('FormatException: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _revoke({required bool viewer}) async {
     final ok = await confirmDialog(
       context,
@@ -137,13 +156,29 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () => showServerSetupSheet(context),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  minimumSize: Size.zero,
-                ),
-                child: Text(isDemo ? 'Setup 2 HP' : 'Atur'),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => showServerSetupSheet(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                    child: Text(isDemo ? 'Setup 2 HP' : 'Atur'),
+                  ),
+                  if (authErr != null) ...[
+                    const SizedBox(height: 6),
+                    FilledButton(
+                      onPressed: _busy ? null : _retryAuth,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text('Coba lagi', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
   static const white = Color(0xFFFFFFFF);
+  static const whiteSoft = Color(0xEBFFFFFF); // putih lembut 92% untuk subjudul di atas pink
   static const transparent = Color(0x00000000);
   static const blush = Color(0xFFFFF1F4); // latar layar
   static const blushWarm = Color(0xFFFFF9FB); // highlight atas kanvas
@@ -57,10 +58,10 @@ class AppColors {
   );
 
   static const canvasGradient = LinearGradient(
-    colors: [Color(0xFFFFC9D4), white],
+    colors: [roseDeep, rose, petal, white],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    stops: [0.0, 0.42],
+    stops: [0.0, 0.42, 0.72, 1.0],
   );
 }
 

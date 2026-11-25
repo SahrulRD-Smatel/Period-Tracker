@@ -172,14 +172,19 @@ class _LogScreenState extends ConsumerState<LogScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 4, 20, 0),
+            padding: const EdgeInsets.fromLTRB(8, 4, 20, 4),
             child: Row(
               children: [
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(PhosphorIconsRegular.caretLeft, color: AppColors.rose),
+                  icon: const Icon(PhosphorIconsRegular.caretLeft, color: AppColors.white),
                 ),
-                Text('Catat hari ini', style: kHeading.copyWith(fontSize: 24)),
+                Expanded(
+                  child: Text(
+                    'Catat hari ini',
+                    style: kHeading.copyWith(fontSize: 24, color: AppColors.white),
+                  ),
+                ),
               ],
             ),
           ),
