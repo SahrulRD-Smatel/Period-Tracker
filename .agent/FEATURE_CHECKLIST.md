@@ -39,6 +39,7 @@
 | Dua peran sekaligus (saling berbagi) | `PartnerState` | Kini satu peran per perangkat. |
 
 ## F. Template prompt untuk AI
-> Baca `.agent/AGENT.md`, `.agent/LOGIC.md`, `.agent/FEATURE_CHECKLIST.md`. Tambahkan fitur: <deskripsi>.
-> Patuhi aturan §5 AGENT.md. Letakkan logika di `domain/` dengan tes, UI di `features/`, pakai tema `AppColors`.
+> Baca `.agent/AGENT.md`, `.agent/LOGIC.md`, `.agent/FEATURE_CHECKLIST.md`, serta ikuti runbook di `.agents/skills/siklusku-feature/SKILL.md` (dan `.agents/skills/siklusku-supabase-sync/SKILL.md` bila menyentuh pasangan/Supabase).
+> Tambahkan fitur: <deskripsi>.
+> Patuhi aturan §5 AGENT.md. Pastikan fitur tersambung end-to-end (bukan stub/demo terputus), letakkan logika di `domain/` dengan tes, simpan state permanen lewat repository + backup v3, UI di `features/` pakai tema `AppColors`.
 > Jalankan checklist §C dan perbarui `.agent/STATUS.md`.
