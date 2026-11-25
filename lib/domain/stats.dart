@@ -1,6 +1,7 @@
 // lib/domain/stats.dart
-// Statistik riwayat siklus untuk layar Statistik. Murni Dart.
+// Statistik riwayat siklus + ringkasan gejala/mood untuk layar Statistik. Murni Dart.
 import 'cycle_engine.dart';
+import 'day_note.dart';
 
 enum Regularity { unknown, regular, varied, irregular }
 
@@ -12,6 +13,12 @@ class CycleRecord {
   const CycleRecord(this.start, this.length, this.periodLength, this.outcome);
 }
 
+class TagCount {
+  final String id;
+  final int count;
+  const TagCount(this.id, this.count);
+}
+
 class CycleStats {
   final List<CycleRecord> cycles; // terlama -> terbaru
   final double? avgCycle;
@@ -19,6 +26,9 @@ class CycleStats {
   final double? avgPeriod;
   final int onTime, early, late;
   final Regularity regularity;
+  final List<TagCount> topSymptoms;
+  final List<TagCount> topMoods;
+  final int totalNotes;
 
   const CycleStats({
     this.cycles = const [],
@@ -30,6 +40,9 @@ class CycleStats {
     this.early = 0,
     this.late = 0,
     this.regularity = Regularity.unknown,
+    this.topSymptoms = const [],
+    this.topMoods = const [],
+    this.totalNotes = 0,
   });
 
   bool get hasData => cycles.isNotEmpty;
@@ -43,9 +56,29 @@ class _Raw {
   const _Raw(this.start, this.len, this.period);
 }
 
+List<TagCount> _topTags(Iterable<Iterable<String>> groups, {int limit = 5}) {
+  final counts = <String, int>{};
+  for (final g in groups) {
+    for (final id in g) {
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+  }
+  final list = [for (final e in counts.entries) TagCount(e.key, e.value)]
+    ..sort((a, b) => b.count != a.count ? b.count.compareTo(a.count) : a.id.compareTo(b.id));
+  return list.length > limit ? list.sublist(0, limit) : list;
+}
+
 /// Hanya siklus dengan panjang 15..60 hari yang dihitung (sama seperti engine).
 /// "Tepat waktu / cepat / terlambat" dibandingkan dengan median seluruh siklus, margin 2 hari.
-CycleStats computeStats(CycleEngine engine, List<PeriodLog> logs) {
+CycleStats computeStats(
+  CycleEngine engine,
+  List<PeriodLog> logs, {
+  List<DayNote> notes = const [],
+}) {
+  final topSymptoms = _topTags(notes.map((n) => n.symptoms));
+  final topMoods = _topTags(notes.map((n) => n.moods));
+  final totalNotes = notes.where((n) => !n.isEmpty).length;
+
   final byStart = <DateTime, PeriodLog>{};
   for (final l in logs) {
     byStart[dateOnly(l.start)] = l;
@@ -67,7 +100,14 @@ CycleStats computeStats(CycleEngine engine, List<PeriodLog> logs) {
   final avgPeriod =
       periodLens.isEmpty ? null : periodLens.reduce((a, b) => a + b) / periodLens.length;
 
-  if (raws.isEmpty) return CycleStats(avgPeriod: avgPeriod);
+  if (raws.isEmpty) {
+    return CycleStats(
+      avgPeriod: avgPeriod,
+      topSymptoms: topSymptoms,
+      topMoods: topMoods,
+      totalNotes: totalNotes,
+    );
+  }
 
   final lengths = raws.map((r) => r.len).toList();
   final sorted = [...lengths]..sort();
@@ -115,5 +155,8 @@ CycleStats computeStats(CycleEngine engine, List<PeriodLog> logs) {
     early: early,
     late: late,
     regularity: regularity,
+    topSymptoms: topSymptoms,
+    topMoods: topMoods,
+    totalNotes: totalNotes,
   );
 }

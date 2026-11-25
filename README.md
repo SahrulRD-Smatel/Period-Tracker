@@ -92,6 +92,6 @@ lib/
 <div align="center">
 
 ### 💐 *"Because you deserve the gentlest love in the universe, Ruru Nicole Putri."* 🎀  
-Dibuat dengan sepenuh hati oleh Dhani (Sahrul).
+Dibuat dengan sepenuh hati oleh Dhani.
 
 </div>

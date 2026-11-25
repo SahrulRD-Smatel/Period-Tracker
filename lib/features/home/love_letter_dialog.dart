@@ -1,5 +1,5 @@
 // lib/features/home/love_letter_dialog.dart
-// Tampilan modal surat cinta bergaya kertas surat coquette manis & interaktif.
+// Tampilan modal surat cinta bergaya kertas surat coquette manis & daftar semua surat.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +12,6 @@ import '../../core/widgets.dart';
 import '../../domain/love_notes.dart';
 
 Future<void> showLoveLetterModal(BuildContext context, WidgetRef ref, LoveNote note) {
-  // Tandai sudah dibaca begitu dibuka
   if (!note.isRead) {
     ref.read(loveNotesProvider.notifier).markAsRead(note.id);
   }
@@ -25,13 +24,23 @@ Future<void> showLoveLetterModal(BuildContext context, WidgetRef ref, LoveNote n
   );
 }
 
+Future<void> showAllLoveLettersModal(BuildContext context) => showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => const _AllLoveLettersSheet(),
+    );
+
 class _LoveLetterSheet extends ConsumerWidget {
   final LoveNote note;
   const _LoveLetterSheet({required this.note});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Ambil versi terbaru catatan bila reaksi berubah
     final all = ref.watch(loveNotesProvider);
     final current = all.firstWhere((n) => n.id == note.id, orElse: () => note);
 
@@ -54,7 +63,6 @@ class _LoveLetterSheet extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Garis penarik atas
           Center(
             child: Container(
               width: 44,
@@ -66,8 +74,6 @@ class _LoveLetterSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Header Surat
           Row(
             children: [
               Container(
@@ -103,8 +109,6 @@ class _LoveLetterSheet extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 18),
-
-          // Kertas Surat Cinta
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             decoration: BoxDecoration(
@@ -145,8 +149,6 @@ class _LoveLetterSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-
-          // Reaksi Balik
           Text(
             current.reaction != null
                 ? 'Reaksi kamu: ${current.reaction} 💞'
@@ -185,6 +187,107 @@ class _LoveLetterSheet extends ConsumerWidget {
                   },
                 ),
             ],
+          ),
+          if (all.length > 1) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                showAllLoveLettersModal(context);
+              },
+              icon: const Icon(PhosphorIconsRegular.envelope, size: 16),
+              label: Text('Lihat semua surat (${all.length})'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AllLoveLettersSheet extends ConsumerWidget {
+  const _AllLoveLettersSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notes = ref.watch(loveNotesProvider);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (context, scroll) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+            child: Row(
+              children: [
+                Text('Kotak Surat Cinta 💌', style: kHeading.copyWith(fontSize: 20)),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(PhosphorIconsRegular.x),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: notes.isEmpty
+                ? const Center(child: Text('Belum ada surat cinta.', style: kSmall))
+                : ListView.separated(
+                    controller: scroll,
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                    itemCount: notes.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) {
+                      final n = notes[i];
+                      return InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          showLoveLetterModal(context, ref, n);
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: n.isRead ? AppColors.blush : AppColors.petal,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Dari ${n.sender} · ${fmtDayMonth(n.createdAt)}',
+                                      style: kSmall.copyWith(fontWeight: FontWeight.w700),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      n.message,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (n.reaction != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text('Reaksi: ${n.reaction}', style: kSmall),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(PhosphorIconsRegular.trash, size: 18),
+                                color: AppColors.mauveSoft,
+                                onPressed: () =>
+                                    ref.read(loveNotesProvider.notifier).deleteNote(n.id),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

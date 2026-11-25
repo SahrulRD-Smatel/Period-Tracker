@@ -1,7 +1,7 @@
 // test/day_view_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mens_app/domain/cycle_engine.dart';
-import 'package:mens_app/domain/day_view.dart';
+import 'package:period_tracker/domain/cycle_engine.dart';
+import 'package:period_tracker/domain/day_view.dart';
 
 void main() {
   const engine = CycleEngine();

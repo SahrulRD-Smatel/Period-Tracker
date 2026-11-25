@@ -31,10 +31,10 @@
 |---|---|---|
 | Notifikasi lokal (✅ Selesai) | `lib/notifications/scheduler.dart` | Jadwal dihitung dari `CyclePrediction` + `AppSettings` (remind*, discreetNotifications). Terintegrasi dengan lifecycle app. |
 | Kunci aplikasi (✅ Selesai) | `lib/core/app_lock.dart` + `local_auth` | Saklar `appLock` aktif. `NSFaceIDUsageDescription` (iOS) & `FlutterFragmentActivity` (Android). |
-| Pasangan nyata (Supabase) | `data/supabase_partner_repository.dart` (rancangan di `docs/future/`) | Implementasi `PartnerRepository`; ganti `partnerRepositoryProvider`; SQL+RLS di `docs/ARSITEKTUR.md` §5; push FCM/APNs berteks netral. Banner demo hilang otomatis (cek `is DemoPartnerRepository`). |
+| Pasangan nyata (Supabase) (✅ Selesai) | `lib/data/supabase_partner_repository.dart` + `supabase/schema.sql` | Anonymous Auth + Postgres + RLS + Realtime untuk kode undangan, snapshot siklus, `love_notes`, dan `care_progress`. Bisa dikonfigurasi dari UI *Setup 2 HP* atau `--dart-define`. |
 | Pindah ke Drift | `data/drift_*_repository.dart` | Implementasi `CycleRepository`/`NotesRepository`; migrasi dari prefs lewat `importFullBackup`. |
-| Cadangan berkas/Share | `features/settings/` + `share_plus` | Kini lewat salin/tempel teks. |
-| Input tes LH/BBT | param `confirmedOvulation` pada `predict()` | Tambah UI + simpan per siklus. |
+| Cadangan berkas/Share | `features/settings/` + `share_plus` | Kini lewat salin/tempel teks (v3 mencakup surat cinta & checklist). |
+| Input tes LH/BBT (✅ Selesai) | `DayNote.ovulationPositive` + `cycle_sync.dart` | Tersambung langsung ke `predictionProvider` (`confirmedOvulation`). |
 | Widget Home/Lock Screen | `home_widget` | Opt-in, teks netral. |
 | Dua peran sekaligus (saling berbagi) | `PartnerState` | Kini satu peran per perangkat. |
 

@@ -1,8 +1,10 @@
 // lib/features/partner/partner_widgets.dart
-// Tampilan ringkasan siklus yang dilihat pasangan (dipakai juga untuk pratinjau pemilik).
+// Tampilan ringkasan siklus yang dilihat pasangan & Checklist Perhatian Romantis persisten.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
+import '../../application/providers.dart';
 import '../../core/formatters.dart';
 import '../../core/phase_style.dart';
 import '../../core/theme.dart';
@@ -163,26 +165,21 @@ class _HiddenTile extends StatelessWidget {
       );
 }
 
-class CareChecklistCard extends StatefulWidget {
+/// Checklist Perhatian Romantis: status centang tersimpan persisten & ikut tersinkron di mode 2 HP.
+class CareChecklistCard extends ConsumerWidget {
   final CyclePhase? phase;
   final String? partnerName;
 
   const CareChecklistCard({super.key, required this.phase, this.partnerName});
 
   @override
-  State<CareChecklistCard> createState() => _CareChecklistCardState();
-}
-
-class _CareChecklistCardState extends State<CareChecklistCard> {
-  final Set<String> _checkedIds = {};
-
-  @override
-  Widget build(BuildContext context) {
-    final items = careGuideForPhase(widget.phase);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final checkedIds = ref.watch(careChecklistProvider);
+    final items = careGuideForPhase(phase);
     final total = items.length;
-    final done = _checkedIds.length;
+    final done = items.where((it) => checkedIds.contains(it.id)).length;
     final progress = total > 0 ? done / total : 0.0;
-    final name = widget.partnerName ?? 'Pasangan';
+    final name = partnerName ?? 'Pasangan';
 
     return PinkCard(
       child: Column(
@@ -216,8 +213,6 @@ class _CareChecklistCardState extends State<CareChecklistCard> {
             ],
           ),
           const SizedBox(height: 14),
-
-          // Progress bar
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
@@ -236,35 +231,28 @@ class _CareChecklistCardState extends State<CareChecklistCard> {
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.rose),
               ),
               if (done == total && total > 0)
-                const Text('Luar biasa manis! 🥰', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.rose)),
+                const Text(
+                  'Luar biasa manis! 🥰',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.rose),
+                ),
             ],
           ),
           const SizedBox(height: 12),
-
-          // Checklist items
           for (final item in items) ...[
             InkWell(
-              onTap: () {
-                setState(() {
-                  if (_checkedIds.contains(item.id)) {
-                    _checkedIds.remove(item.id);
-                  } else {
-                    _checkedIds.add(item.id);
-                  }
-                });
-              },
+              onTap: () => ref.read(careChecklistProvider.notifier).toggle(item.id),
               borderRadius: BorderRadius.circular(14),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: _checkedIds.contains(item.id)
+                  color: checkedIds.contains(item.id)
                       ? AppColors.blush.withValues(alpha: 0.5)
                       : AppColors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: _checkedIds.contains(item.id) ? AppColors.rose : AppColors.petal,
-                    width: _checkedIds.contains(item.id) ? 1.5 : 1,
+                    color: checkedIds.contains(item.id) ? AppColors.rose : AppColors.petal,
+                    width: checkedIds.contains(item.id) ? 1.5 : 1,
                   ),
                 ),
                 child: Row(
@@ -281,10 +269,10 @@ class _CareChecklistCardState extends State<CareChecklistCard> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              decoration: _checkedIds.contains(item.id)
+                              decoration: checkedIds.contains(item.id)
                                   ? TextDecoration.lineThrough
                                   : null,
-                              color: _checkedIds.contains(item.id)
+                              color: checkedIds.contains(item.id)
                                   ? AppColors.mauveSoft
                                   : AppColors.mauve,
                             ),
@@ -293,7 +281,7 @@ class _CareChecklistCardState extends State<CareChecklistCard> {
                           Text(
                             item.description,
                             style: kSmall.copyWith(
-                              color: _checkedIds.contains(item.id)
+                              color: checkedIds.contains(item.id)
                                   ? AppColors.mauveSoft
                                   : AppColors.mauve,
                             ),
@@ -302,12 +290,10 @@ class _CareChecklistCardState extends State<CareChecklistCard> {
                       ),
                     ),
                     Icon(
-                      _checkedIds.contains(item.id)
+                      checkedIds.contains(item.id)
                           ? PhosphorIconsFill.checkCircle
                           : PhosphorIconsRegular.circle,
-                      color: _checkedIds.contains(item.id)
-                          ? AppColors.rose
-                          : AppColors.mist,
+                      color: checkedIds.contains(item.id) ? AppColors.rose : AppColors.mist,
                       size: 22,
                     ),
                   ],
@@ -316,8 +302,6 @@ class _CareChecklistCardState extends State<CareChecklistCard> {
             ),
           ],
           const SizedBox(height: 8),
-
-          // Tombol Tulis Surat Cinta
           SizedBox(
             width: double.infinity,
             child: FilledButton.tonalIcon(

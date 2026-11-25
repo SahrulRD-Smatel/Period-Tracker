@@ -12,6 +12,7 @@ import '../../core/phase_style.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../domain/cycle_engine.dart';
+import '../../domain/cycle_sync.dart';
 import '../../domain/day_note.dart';
 import '../../domain/day_view.dart';
 import '../home/log_actions.dart';
@@ -25,8 +26,14 @@ class CalendarScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
-  DateTime _focused = DateTime.now();
+  late DateTime _focused;
   DateTime? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _focused = ref.read(todayProvider);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +42,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final prediction = ref.watch(predictionProvider);
     final today = ref.watch(todayProvider);
     final notes = ref.watch(notesProvider);
+    final defPeriodLen = ref.watch(settingsProvider).periodLength;
 
     DayView? viewOf(DateTime d) => dayViewFor(
           d,
@@ -45,9 +53,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         );
 
     Widget cell(DateTime day, {bool isSelected = false}) {
+      final d = dateOnly(day);
       final v = viewOf(day);
       final isToday = isSameDay(day, today);
-      final hasNote = notes.containsKey(dateOnly(day));
+      final note = notes[d];
+      final hasNote = note != null;
       final st = v == null ? null : phaseStyle(v.phase);
       final predictedPeriod = v != null && v.phase == CyclePhase.menstrual && !v.logged;
       final Color? bg = st == null ? null : (predictedPeriod ? AppColors.petal : st.color);
@@ -81,7 +91,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
               ),
             ),
-            if (v != null && v.phase == CyclePhase.ovulation)
+            if ((v != null && v.phase == CyclePhase.ovulation) || (note?.ovulationPositive ?? false))
               const Positioned(
                 top: 1,
                 right: 3,
@@ -137,7 +147,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 _selected = selected;
                 _focused = focused;
               });
-              _showDaySheet(selected, viewOf(selected), logs, today);
+              _showDaySheet(selected, viewOf(selected), logs, today, defPeriodLen);
             },
             onPageChanged: (focused) => _focused = focused,
             headerStyle: HeaderStyle(
@@ -173,11 +183,23 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  void _showDaySheet(DateTime day, DayView? v, List<PeriodLog> logs, DateTime today) {
+  void _showDaySheet(
+    DateTime day,
+    DayView? v,
+    List<PeriodLog> logs,
+    DateTime today,
+    int defaultPeriodLen,
+  ) {
     final d = dateOnly(day);
     final isStart = logs.any((l) => dateOnly(l.start) == d);
+    final containing = logContainingDate(logs, d, defaultPeriodLen: defaultPeriodLen);
+    final openPeriod = activeOpenPeriod(logs, d);
     final DayNote? note = ref.read(notesProvider)[d];
     final canEdit = !d.isAfter(today);
+
+    final targetForEnd = (containing != null && d.isAfter(dateOnly(containing.start)))
+        ? containing
+        : (openPeriod != null && d.isAfter(dateOnly(openPeriod.start)) ? openPeriod : null);
 
     showModalBottomSheet<void>(
       context: context,
@@ -224,6 +246,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   const SizedBox(height: 4),
                   const Text('Hari ini juga masuk perkiraan masa subur.', style: kSmall),
                 ],
+                if (containing?.end != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Durasi haid tercatat: ${fmtRange(containing!.start, containing.end!)}.',
+                    style: kSmall,
+                  ),
+                ],
               ],
               if (note != null) ...[
                 const SizedBox(height: 14),
@@ -233,6 +262,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
+                    if (note.ovulationPositive) const TagChip('✨ Tes ovulasi positif'),
                     if (note.flow != null) TagChip('Aliran ${kFlowLabels[note.flow]!.toLowerCase()}'),
                     for (final s in note.symptoms) TagChip(symptomLabel(s)),
                     for (final m in note.moods) TagChip(moodLabel(m)),
@@ -245,6 +275,37 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ],
               if (canEdit) ...[
                 const SizedBox(height: 18),
+                if (targetForEnd != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        ref.read(periodLogsProvider.notifier).setEnd(targetForEnd.start, d);
+                        Navigator.of(sheetContext).pop();
+                      },
+                      icon: const Icon(PhosphorIconsFill.checkCircle),
+                      label: Text(
+                        targetForEnd.end == d
+                            ? 'Haid selesai tercatat di tanggal ini'
+                            : 'Tandai haid selesai di tanggal ini',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (containing != null && containing.end != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        ref.read(periodLogsProvider.notifier).setEnd(containing.start, null);
+                        Navigator.of(sheetContext).pop();
+                      },
+                      child: const Text('Reset tanggal selesai haid'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: isStart
@@ -255,7 +316,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           },
                           child: const Text('Hapus catatan haid ini'),
                         )
-                      : FilledButton(
+                      : OutlinedButton(
                           onPressed: () {
                             Navigator.of(sheetContext).pop();
                             logPeriodStart(context, ref, d);
@@ -308,8 +369,8 @@ class _Legend extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Lingkaran penuh = haid tercatat. Lingkaran terang berbingkai = prediksi haid. '
-              'Titik gelap = ada catatan harian. Ketuk tanggal untuk detail.',
+              'Kotak penuh = haid tercatat. Kotak terang berbingkai = prediksi haid. '
+              'Titik gelap = ada catatan harian. Ketuk tanggal untuk detail atau atur haid selesai.',
               style: kSmall,
             ),
           ],

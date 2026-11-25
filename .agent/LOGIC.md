@@ -71,6 +71,11 @@ Ubah `cycle_engine.dart` → tambah/ubah tes di `test/cycle_engine_test.dart` �
 - "Tepat waktu / lebih cepat / terlambat": `classifyCycle` terhadap **median seluruh siklus**, margin 2 hari; hanya bila ada ≥ 3 siklus (kurang dari itu `outcome = null`).
 - Keteraturan (butuh ≥ 3 siklus): rentang (maks − min) ≤ 7 hari = teratur; ≤ 14 = cukup bervariasi; selebihnya tidak teratur.
 - Lama haid rata-rata hanya dari log yang punya tanggal selesai (1..10 hari).
+- Ringkasan catatan (`topSymptoms`, `topMoods`, `totalNotes`): mengagregasi gejala dan mood terbanyak dari `DayNote` walau siklus baru tercatat 1 kali.
+
+## 10b. Sinkronisasi Log ↔ Siklus (`domain/cycle_sync.dart`)
+- `latestConfirmedOvulation(logs, notes)` membaca `DayNote.ovulationPositive` terbaru pada siklus berjalan untuk disalurkan ke `CycleEngine.predict(confirmedOvulation: ...)`.
+- `shouldAutoStartPeriod`, `logContainingDate`, dan `activeOpenPeriod` menjaga agar pencatatan aliran haid di `LogScreen` serta tanda selesai haid di `CalendarScreen`/`HomeScreen` konsisten tanpa menciptakan siklus ganda <15 hari.
 
 ## 11. Setelan → engine
 `AppSettings.toCycleSettings()` menyuplai default (panjang siklus 28, lama haid 5, luteal 14) ke `CycleEngine`.
@@ -83,5 +88,6 @@ siklus 21–45, haid 2–10, luteal 10–16 (nilai lain dijepit saat dibaca).
 (lihat aturan fase `delayed`). Satu perangkat = satu peran (pemilik atau pelihat) pada MVP.
 
 ## 13. Cadangan
-v1: `{version:1, periods}`. v2: `{version:2, periods, notes, settings}`. Impor v1 → catatan kosong & setelan tidak diubah.
+v1: `{version:1, periods}`. v2: `{version:2, periods, notes, settings}`.
+v3: `{version:3, periods, notes, settings, loveNotes, careCheckedIds}`. Impor v1/v2 tetap kompatibel.
 Setelah pemulihan `onboardingDone = true`.

@@ -24,7 +24,9 @@ class _MensAppState extends ConsumerState<MensApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Jadwalkan notifikasi saat pertama kali app aktif
+    // Kunci langsung saat cold start jika appLock aktif!
+    _locked = ref.read(settingsProvider).appLock;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncNotifications();
     });
@@ -49,13 +51,12 @@ class _MensAppState extends ConsumerState<MensApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Hitung ulang "hari ini" setiap aplikasi kembali ke foreground (ganti hari)
       ref.invalidate(todayProvider);
-      // Kunci layar bila fitur kunci aktif
       if (ref.read(settingsProvider).appLock) {
         setState(() => _locked = true);
       }
       _syncNotifications();
+      ref.read(partnerProvider.notifier).syncWithServer();
     }
   }
 
@@ -63,7 +64,6 @@ class _MensAppState extends ConsumerState<MensApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
 
-    // Dengarkan perubahan prediksi dan setelan secara real-time
     ref.listen(predictionProvider, (_, next) {
       final s = ref.read(settingsProvider);
       if (next != null && (s.remindPeriod || s.remindFertile)) {
@@ -80,6 +80,11 @@ class _MensAppState extends ConsumerState<MensApp> with WidgetsBindingObserver {
       } else if (!next.remindPeriod && !next.remindFertile) {
         NotificationScheduler.cancelAll();
       }
+    });
+
+    // Setiap kali ringkasan siklus berubah, otomatis kirim snapshot ke pasangan (bila owner tersambung)
+    ref.listen(homeSummaryProvider, (_, __) {
+      ref.read(partnerProvider.notifier).pushSnapshotIfOwner();
     });
 
     return MaterialApp(

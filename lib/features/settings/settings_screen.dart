@@ -1,5 +1,6 @@
 // lib/features/settings/settings_screen.dart
-// Setelan: profil siklus, pengingat, keamanan, data (cadangan/pulihkan/hapus), tentang.
+// Setelan: profil siklus, pengingat (dengan status platform & uji notifikasi),
+// keamanan (biometrik + PIN fallback), data (cadangan v3/pulihkan/hapus), tentang.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -14,8 +15,9 @@ import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../domain/app_settings.dart';
 import '../../domain/full_backup.dart';
+import '../../notifications/scheduler.dart';
 
-const appVersion = '0.3.0';
+const appVersion = '0.4.0';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -41,7 +43,8 @@ class SettingsScreen extends ConsumerWidget {
       final ok = await confirmDialog(
         context,
         title: 'Ganti data sekarang?',
-        message: 'Ditemukan ${data.periods.length} catatan haid dan ${data.notes.length} catatan harian. '
+        message: 'Ditemukan ${data.periods.length} catatan haid, ${data.notes.length} catatan harian'
+            '${data.loveNotes.isNotEmpty ? ', dan ${data.loveNotes.length} surat cinta' : ''}. '
             'Data di perangkat ini akan diganti.',
         confirmLabel: 'Pulihkan',
       );
@@ -57,13 +60,57 @@ class SettingsScreen extends ConsumerWidget {
     final ok = await confirmDialog(
       context,
       title: 'Hapus semua data?',
-      message: 'Riwayat haid, catatan harian, dan setelan akan dihapus permanen dari perangkat ini. '
+      message: 'Riwayat haid, catatan harian, surat cinta, dan setelan akan dihapus permanen dari perangkat ini. '
           'Tindakan ini tidak bisa dibatalkan. Sebaiknya salin cadangan dulu.',
       confirmLabel: 'Hapus semua',
       destructive: true,
     );
     if (!ok) return;
     await wipeAllData(ref);
+  }
+
+  Future<void> _toggleAppLock(BuildContext context, WidgetRef ref, bool enable) async {
+    final set = ref.read(settingsProvider.notifier);
+    if (!enable) {
+      await set.update((x) => x.copyWith(appLock: false));
+      return;
+    }
+
+    final hw = await AppLockService.isHardwareSupported();
+    if (hw) {
+      final ok = await AppLockService.authenticateHardware();
+      if (!ok) {
+        if (context.mounted) _snack(context, 'Autentikasi perangkat dibatalkan.');
+        return;
+      }
+      await set.update((x) => x.copyWith(appLock: true));
+      return;
+    }
+
+    if (!context.mounted) return;
+    final pin = await promptSetLocalPin(context);
+    if (pin == null) return;
+    await ref.read(appPinRepositoryProvider).savePin(pin);
+    await set.update((x) => x.copyWith(appLock: true));
+    if (context.mounted) _snack(context, 'Kunci PIN 4-angka aktif 🔒');
+  }
+
+  Future<void> _changePin(BuildContext context, WidgetRef ref) async {
+    final pin = await promptSetLocalPin(context);
+    if (pin == null) return;
+    await ref.read(appPinRepositoryProvider).savePin(pin);
+    if (context.mounted) _snack(context, 'PIN cadangan berhasil disimpan 🔒');
+  }
+
+  Future<void> _testNotification(BuildContext context, AppSettings s) async {
+    final ok = await NotificationScheduler.sendTestNotification(discreet: s.discreetNotifications);
+    if (!context.mounted) return;
+    _snack(
+      context,
+      ok
+          ? 'Notifikasi uji coba dikirim! Periksa bilah notifikasi perangkatmu 🔔'
+          : 'Gagal mengirim notifikasi. Pastikan izin notifikasi aktif di Setelan HP.',
+    );
   }
 
   void _explain(BuildContext context) {
@@ -89,10 +136,10 @@ class SettingsScreen extends ConsumerWidget {
               'telat atau maju tidak langsung mengubah semuanya.\n\n'
               '• Ovulasi diperkirakan ±14 hari sebelum haid berikutnya, bukan "hari ke-14". '
               'Masa subur = 5 hari sebelum sampai 1 hari sesudah ovulasi.\n\n'
-              '• Hasilnya berupa rentang beserta tingkat keyakinan. Makin banyak siklus tercatat, '
-              'makin akurat.\n\n'
-              '• Ini estimasi berbasis kalender, bukan alat kontrasepsi dan bukan diagnosis. '
-              'Bila haid sangat tidak teratur atau terlambat lama, konsultasikan ke dokter.',
+              '• Jika kamu mencatat hasil tes ovulasi positif (+), jadwal haid berikutnya langsung '
+              'mengikuti tanggal ovulasi tersebut.\n\n'
+              '• Hasilnya berupa rentang beserta tingkat keyakinan. Ini estimasi berbasis kalender, '
+              'bukan alat kontrasepsi dan bukan diagnosis medis.',
               style: TextStyle(height: 1.45),
             ),
           ],
@@ -105,6 +152,24 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(settingsProvider);
     final set = ref.read(settingsProvider.notifier);
+    final notifSupported = NotificationScheduler.isSupportedPlatform;
+    final notifStatus = NotificationScheduler.lastResult;
+
+    final String notifStatusText;
+    if (!notifSupported) {
+      notifStatusText =
+          'Notifikasi jadwal hanya berjalan di perangkat Android & iOS (tidak didukung di browser/desktop).';
+    } else if (notifStatus.permissionDenied) {
+      notifStatusText = 'Izin notifikasi belum diizinkan. Aktifkan di Setelan sistem perangkat.';
+    } else if (!s.remindPeriod && !s.remindFertile) {
+      notifStatusText = 'Semua pengingat sedang dimatikan.';
+    } else if (notifStatus.usedInexactFallback) {
+      notifStatusText =
+          'Pengingat aktif (mode hemat daya / inexact). Pastikan izin notifikasi sistem aktif.';
+    } else {
+      notifStatusText =
+          'Notifikasi dijadwalkan untuk jam 08:00 waktu lokal di perangkat Android/iOS ini.';
+    }
 
     final sections = <Widget>[
       const BowHeader(title: 'Setelan', subtitle: 'Atur siklus, pengingat, dan datamu'),
@@ -209,34 +274,47 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(PhosphorIconsFill.bellRinging,
-                    size: 14, color: AppColors.rose),
-                const SizedBox(width: 6),
-                const Expanded(
-                  child: Text(
-                    'Notifikasi aktif. Pastikan izin notifikasi diberikan di pengaturan perangkat.',
-                    style: kSmall,
-                  ),
+                Icon(
+                  notifSupported ? PhosphorIconsFill.bellRinging : PhosphorIconsRegular.info,
+                  size: 15,
+                  color: notifSupported ? AppColors.rose : AppColors.mauveSoft,
                 ),
+                const SizedBox(width: 6),
+                Expanded(child: Text(notifStatusText, style: kSmall)),
               ],
             ),
+            if (notifSupported) ...[
+              const Divider(height: 20, color: AppColors.petal),
+              ActionRow(
+                icon: PhosphorIconsRegular.bell,
+                label: 'Kirim notifikasi uji coba',
+                onTap: () => _testNotification(context, s),
+              ),
+            ],
           ],
         ),
       ),
       const SectionTitle('Keamanan'),
       PinkCard(
-        child: SwitchRow(
-          title: 'Kunci aplikasi',
-          subtitle: 'Face ID, sidik jari, atau PIN perangkat',
-          value: s.appLock,
-          onChanged: (v) async {
-            if (v) {
-              final ok = await AppLockService.authenticate();
-              if (!ok) return;
-            }
-            set.update((x) => x.copyWith(appLock: v));
-          },
+        child: Column(
+          children: [
+            SwitchRow(
+              title: 'Kunci aplikasi',
+              subtitle: 'Mengunci setiap kali dibuka kembali (biometrik atau PIN 4-angka)',
+              value: s.appLock,
+              onChanged: (v) => _toggleAppLock(context, ref, v),
+            ),
+            if (s.appLock) ...[
+              const Divider(height: 12, color: AppColors.petal),
+              ActionRow(
+                icon: PhosphorIconsRegular.lockKey,
+                label: 'Atur / ganti PIN cadangan 4-angka',
+                onTap: () => _changePin(context, ref),
+              ),
+            ],
+          ],
         ),
       ),
       const SectionTitle('Data'),
@@ -278,7 +356,7 @@ class SettingsScreen extends ConsumerWidget {
             const Text('Siklusku $appVersion 🎀', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             const Text(
-              'Datamu tersimpan di perangkat ini. Tidak ada iklan dan tidak ada pelacak. '
+              'Data kesehatan pribadimu tersimpan di perangkat ini. Tidak ada iklan dan tidak ada pelacak. '
               'Perkiraan berdasarkan kalender, bukan alat kontrasepsi dan bukan diagnosis medis.',
               style: kSmall,
             ),
@@ -330,7 +408,7 @@ class _RestoreDialogState extends State<_RestoreDialog> {
               maxLines: 6,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: '{"version":2, ...}',
+                hintText: '{"version":3, ...}',
               ),
             ),
           ],

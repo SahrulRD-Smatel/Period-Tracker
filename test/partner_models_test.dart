@@ -1,9 +1,9 @@
 // test/partner_models_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mens_app/data/partner_repository.dart';
-import 'package:mens_app/domain/cycle_engine.dart';
-import 'package:mens_app/domain/home_summary.dart';
-import 'package:mens_app/domain/partner_models.dart';
+import 'package:period_tracker/data/partner_repository.dart';
+import 'package:period_tracker/domain/cycle_engine.dart';
+import 'package:period_tracker/domain/home_summary.dart';
+import 'package:period_tracker/domain/partner_models.dart';
 
 void main() {
   const engine = CycleEngine();

@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:mens_app/app.dart';
-import 'package:mens_app/application/providers.dart';
-import 'package:mens_app/domain/app_settings.dart';
-import 'package:mens_app/domain/backup.dart';
-import 'package:mens_app/domain/cycle_engine.dart';
-import 'package:mens_app/domain/love_notes.dart';
+import 'package:period_tracker/app.dart';
+import 'package:period_tracker/application/providers.dart';
+import 'package:period_tracker/domain/app_settings.dart';
+import 'package:period_tracker/domain/backup.dart';
+import 'package:period_tracker/domain/cycle_engine.dart';
+import 'package:period_tracker/domain/love_notes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> _pumpRomanticApp(
@@ -117,10 +117,16 @@ void main() {
 
     // Centang aksi perhatian pertama
     final firstItem = find.text('Sajikan Minuman Hangat');
+    await tester.ensureVisible(firstItem);
     await tester.tap(firstItem);
     await tester.pumpAndSettle();
 
-    // Progress bertambah
+    // Progress bertambah & tetap tersimpan walau pindah tab
+    expect(find.textContaining('Perhatian terwujud: 1'), findsOneWidget);
+    await tester.tap(find.byTooltip('Beranda'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Pasangan'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('Perhatian terwujud: 1'), findsOneWidget);
   });
 }

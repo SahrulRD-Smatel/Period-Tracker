@@ -5,7 +5,7 @@
 // Ganti `mens_app` dengan nama package di pubspec.yaml kamu.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mens_app/core/app_scaffold.dart';
+import 'package:period_tracker/core/app_scaffold.dart';
 
 class _Device {
   final String name;

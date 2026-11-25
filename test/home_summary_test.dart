@@ -1,8 +1,8 @@
 // test/home_summary_test.dart
 // Ganti `mens_app` dengan nama package di pubspec.yaml kamu bila berbeda.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mens_app/domain/cycle_engine.dart';
-import 'package:mens_app/domain/home_summary.dart';
+import 'package:period_tracker/domain/cycle_engine.dart';
+import 'package:period_tracker/domain/home_summary.dart';
 
 void main() {
   const engine = CycleEngine();

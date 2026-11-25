@@ -1,7 +1,7 @@
 // test/stats_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mens_app/domain/cycle_engine.dart';
-import 'package:mens_app/domain/stats.dart';
+import 'package:period_tracker/domain/cycle_engine.dart';
+import 'package:period_tracker/domain/stats.dart';
 
 void main() {
   const engine = CycleEngine();

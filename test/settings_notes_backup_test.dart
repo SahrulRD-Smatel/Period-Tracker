@@ -1,10 +1,10 @@
 // test/settings_notes_backup_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mens_app/domain/app_settings.dart';
-import 'package:mens_app/domain/backup.dart';
-import 'package:mens_app/domain/cycle_engine.dart';
-import 'package:mens_app/domain/day_note.dart';
-import 'package:mens_app/domain/full_backup.dart';
+import 'package:period_tracker/domain/app_settings.dart';
+import 'package:period_tracker/domain/backup.dart';
+import 'package:period_tracker/domain/cycle_engine.dart';
+import 'package:period_tracker/domain/day_note.dart';
+import 'package:period_tracker/domain/full_backup.dart';
 
 void main() {
   DateTime d(int m, int day) => DateTime.utc(2026, m, day);

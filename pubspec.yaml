@@ -1,4 +1,4 @@
-name: mens_app
+name: period_tracker
 description: Pelacak siklus haid (Flutter) bertema pink coquette.
 publish_to: 'none'
 version: 0.2.0+2
@@ -21,6 +21,7 @@ dependencies:
   timezone: ^0.9.4
   flutter_timezone: ^5.1.1
   local_auth: ^2.3.0
+  supabase_flutter: ^2.18.3
 
 dev_dependencies:
   flutter_test:

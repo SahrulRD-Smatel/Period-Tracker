@@ -1,5 +1,5 @@
 // lib/features/stats/stats_screen.dart
-// Statistik: ringkasan, diagram panjang siklus, tepat waktu/cepat/terlambat, riwayat.
+// Statistik: ringkasan siklus, diagram panjang siklus, pola gejala & mood, dan riwayat.
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +23,9 @@ class StatsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(statsProvider);
+    final hasNotesInsights =
+        stats.totalNotes > 0 && (stats.topSymptoms.isNotEmpty || stats.topMoods.isNotEmpty);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
@@ -31,12 +34,19 @@ class StatsScreen extends ConsumerWidget {
             .fadeIn(duration: 300.ms)
             .slideY(begin: -0.04, curve: Curves.easeOut),
         const SizedBox(height: 16),
-        if (!stats.hasData)
+        if (!stats.hasData) ...[
           const _EmptyStats()
               .animate()
               .fadeIn(duration: 400.ms)
-              .scale(begin: const Offset(0.95, 0.95), curve: Curves.easeOut)
-        else ...[
+              .scale(begin: const Offset(0.95, 0.95), curve: Curves.easeOut),
+          if (hasNotesInsights) ...[
+            const SizedBox(height: 14),
+            _NotesInsightsCard(stats: stats)
+                .animate(delay: 100.ms)
+                .fadeIn(duration: 350.ms)
+                .slideY(begin: 0.05, curve: Curves.easeOut),
+          ],
+        ] else ...[
           _SummaryGrid(stats: stats)
               .animate(delay: 60.ms)
               .fadeIn(duration: 350.ms)
@@ -56,6 +66,13 @@ class StatsScreen extends ConsumerWidget {
             const _NeedMoreData()
                 .animate(delay: 180.ms)
                 .fadeIn(duration: 350.ms),
+          if (hasNotesInsights) ...[
+            const SizedBox(height: 14),
+            _NotesInsightsCard(stats: stats)
+                .animate(delay: 210.ms)
+                .fadeIn(duration: 350.ms)
+                .slideY(begin: 0.05, curve: Curves.easeOut),
+          ],
           const SizedBox(height: 14),
           _HistoryCard(stats: stats)
               .animate(delay: 240.ms)
@@ -104,6 +121,53 @@ class _NeedMoreData extends StatelessWidget {
         child: Text(
           'Catat minimal 4 haid (3 siklus) untuk melihat seberapa teratur siklusmu.',
           style: TextStyle(height: 1.4),
+        ),
+      );
+}
+
+class _NotesInsightsCard extends StatelessWidget {
+  final CycleStats stats;
+  const _NotesInsightsCard({required this.stats});
+
+  @override
+  Widget build(BuildContext context) => PinkCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('Pola gejala & suasana hati', style: kHeading.copyWith(fontSize: 18)),
+                const Spacer(),
+                Text('${stats.totalNotes} catatan', style: kSmall),
+              ],
+            ),
+            if (stats.topSymptoms.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('Gejala tersering', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final s in stats.topSymptoms)
+                    TagChip('${symptomLabel(s.id)} · ${s.count}x'),
+                ],
+              ),
+            ],
+            if (stats.topMoods.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('Suasana hati tersering', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final m in stats.topMoods)
+                    TagChip('${moodLabel(m.id)} · ${m.count}x'),
+                ],
+              ),
+            ],
+          ],
         ),
       );
 }

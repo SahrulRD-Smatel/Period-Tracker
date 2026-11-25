@@ -1,6 +1,6 @@
 // lib/features/partner/partner_screen.dart
-// Tersambung dengan pasangan: undang / terima kode, atur data yang dibagikan, lihat ringkasan.
-// Saat ini memakai DemoPartnerRepository (tanpa server).
+// Tersambung dengan pasangan: mendukung Mode Lokal/Demo (persisten di perangkat)
+// maupun Sinkronisasi 2 HP Nyata via Supabase (undangan real-time, privasi, & surat cinta 2 arah).
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,9 +10,10 @@ import '../../application/providers.dart';
 import '../../core/dialogs.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
-import '../../data/partner_repository.dart';
 import '../../domain/partner_models.dart';
+import '../home/love_letter_dialog.dart';
 import 'partner_widgets.dart';
+import 'server_setup_sheet.dart';
 
 class PartnerScreen extends ConsumerStatefulWidget {
   const PartnerScreen({super.key});
@@ -24,6 +25,7 @@ class PartnerScreen extends ConsumerStatefulWidget {
 class _PartnerScreenState extends ConsumerState<PartnerScreen> {
   final _code = TextEditingController();
   String? _error;
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -31,13 +33,38 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
     super.dispose();
   }
 
+  Future<void> _createInvite() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(partnerProvider.notifier).createInvite();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal membuat kode: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _accept() async {
-    setState(() => _error = null);
+    setState(() {
+      _error = null;
+      _busy = true;
+    });
     try {
       await ref.read(partnerProvider.notifier).acceptInvite(_code.text);
       _code.clear();
     } on FormatException catch (e) {
       if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Gagal menghubungkan: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -57,39 +84,65 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
 
   String _subtitle(PartnerState st) => switch (st.role) {
         PartnerRole.none => 'Saling mengerti & peduli dengan izin pemilik data',
-        PartnerRole.owner => st.linked ? 'Kamu memegang kendali penuh apa yang dibagikan' : 'Menunggu pasangan menerima undangan',
+        PartnerRole.owner =>
+          st.linked ? 'Kamu memegang kendali penuh apa yang dibagikan' : 'Menunggu pasangan menerima undangan',
         PartnerRole.viewer => 'Kondisi & panduan perhatian untuk pasanganmu',
       };
 
   @override
   Widget build(BuildContext context) {
     final st = ref.watch(partnerProvider);
-    final isDemo = ref.watch(partnerRepositoryProvider) is DemoPartnerRepository;
+    final repo = ref.watch(partnerRepositoryProvider);
+    final cfg = ref.watch(serverConfigProvider);
+    final isDemo = repo.isDemo;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
         BowHeader(title: 'Pasangan', subtitle: _subtitle(st)),
-        const SizedBox(height: 16),
-        if (isDemo) ...[
-          const PinkCard(
-            color: AppColors.petal,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(PhosphorIconsRegular.flask, color: AppColors.rose),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Mode demo: belum terhubung ke server. Alur dan tampilan sudah lengkap; '
-                    'sinkronisasi nyata menyusul.',
-                    style: TextStyle(height: 1.4),
-                  ),
+        const SizedBox(height: 14),
+        PinkCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          color: isDemo ? AppColors.petal : AppColors.blush,
+          child: Row(
+            children: [
+              Icon(
+                isDemo ? PhosphorIconsRegular.flask : PhosphorIconsFill.cloudCheck,
+                color: AppColors.rose,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isDemo
+                          ? 'Mode lokal (1 HP)'
+                          : 'Sinkronisasi 2 HP Aktif (${cfg.displayName})',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    ),
+                    Text(
+                      isDemo
+                          ? 'Siap dicoba di HP ini. Hubungkan Supabase untuk sinkronisasi 2 HP nyata.'
+                          : 'Perubahan fase, privasi & surat cinta tersinkron real-time.',
+                      style: kSmall.copyWith(fontSize: 12),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () => showServerSetupSheet(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: Size.zero,
+                ),
+                child: Text(isDemo ? 'Setup 2 HP' : 'Atur'),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-        ],
+        ),
+        const SizedBox(height: 14),
         switch (st.role) {
           PartnerRole.none => _none(),
           PartnerRole.owner => st.linked ? _ownerLinked(st) : _ownerInvite(st),
@@ -99,7 +152,6 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
     );
   }
 
-  // ---------- belum terhubung ----------
   Widget _none() => Column(
         children: [
           PinkCard(
@@ -141,7 +193,7 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () => ref.read(partnerProvider.notifier).createInvite(),
+                    onPressed: _busy ? null : _createInvite,
                     child: const Text('Buat kode undangan'),
                   ),
                 ),
@@ -155,7 +207,7 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
               children: [
                 Text('Aku pasangan', style: kHeading.copyWith(fontSize: 20)),
                 const SizedBox(height: 6),
-                const Text('Masukkan kode dari pasanganmu.', style: kSmall),
+                const Text('Masukkan kode 8 karakter dari pasanganmu.', style: kSmall),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _code,
@@ -182,7 +234,10 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
                 ),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton(onPressed: _accept, child: const Text('Hubungkan')),
+                  child: FilledButton(
+                    onPressed: _busy ? null : _accept,
+                    child: Text(_busy ? 'Menghubungkan...' : 'Hubungkan'),
+                  ),
                 ),
               ],
             ),
@@ -190,7 +245,6 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
         ],
       );
 
-  // ---------- pemilik: menunggu ----------
   Widget _ownerInvite(PartnerState st) => PinkCard(
         child: Column(
           children: [
@@ -201,7 +255,13 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
               style: kHeading.copyWith(fontSize: 36, letterSpacing: 4),
             ),
             const SizedBox(height: 6),
-            const Text('Berlaku 24 jam, sekali pakai.', style: kSmall),
+            Text(
+              st.demo
+                  ? 'Berlaku 24 jam, sekali pakai (mode lokal).'
+                  : 'Bagikan ke HP pasanganmu. Layar otomatis tersambung begitu kode diterima 🌐',
+              textAlign: TextAlign.center,
+              style: kSmall,
+            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -217,6 +277,17 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            if (!st.demo) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => ref.read(partnerProvider.notifier).syncWithServer(),
+                  icon: const Icon(PhosphorIconsRegular.arrowsClockwise),
+                  label: const Text('Periksa status koneksi'),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -233,18 +304,20 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
         ),
       );
 
-  // ---------- pemilik: tersambung ----------
   Widget _ownerLinked(PartnerState st) {
     final notifier = ref.read(partnerProvider.notifier);
     final summary = ref.watch(homeSummaryProvider);
     final today = ref.watch(todayProvider);
+    final notesCount = ref.watch(loveNotesProvider).length;
+
     return Column(
       children: [
         PinkCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Terhubung dengan ${st.partnerName ?? 'pasangan'} 💞', style: kHeading.copyWith(fontSize: 20)),
+              Text('Terhubung dengan ${st.partnerName ?? 'Pasangan'} 💞',
+                  style: kHeading.copyWith(fontSize: 20)),
               const SizedBox(height: 12),
               SwitchRow(
                 title: 'Fase siklus & energi',
@@ -267,7 +340,10 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
                 onChanged: (v) => notifier.setFlags(st.flags.copyWith(fertileWindow: v)),
               ),
               const SizedBox(height: 10),
-              const Text('100% rahasia pribadimu: gejala fisik, mood, catatan diary, dan riwayat tidak pernah dibagikan.', style: kSmall),
+              const Text(
+                '100% rahasia pribadimu: gejala fisik, mood, catatan diary, dan riwayat tidak pernah dibagikan.',
+                style: kSmall,
+              ),
             ],
           ),
         ),
@@ -281,7 +357,16 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
           ),
         const SizedBox(height: 14),
         CareChecklistCard(phase: summary?.phase, partnerName: st.partnerName),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => showAllLoveLettersModal(context),
+            icon: const Icon(PhosphorIconsRegular.envelope),
+            label: Text('Kotak Surat Cinta ($notesCount)'),
+          ),
+        ),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
@@ -297,20 +382,66 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
     );
   }
 
-  // ---------- pasangan (pelihat) ----------
   Widget _viewer(PartnerState st) {
     final snap = st.snapshot;
     final today = ref.watch(todayProvider);
+    final notesCount = ref.watch(loveNotesProvider).length;
+
     return Column(
       children: [
+        PinkCard(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const Icon(PhosphorIconsFill.heart, color: AppColors.rose),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Tersambung dengan ${st.partnerName ?? 'Pasangan'}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (!st.demo)
+                IconButton(
+                  tooltip: 'Segarkan data',
+                  icon: const Icon(PhosphorIconsRegular.arrowsClockwise),
+                  onPressed: () => ref.read(partnerProvider.notifier).syncWithServer(),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         if (snap == null)
-          const PinkCard(child: Text('Belum ada data dari pasanganmu.', style: kSmall))
+          const PinkCard(
+            child: Text('Belum ada data siklus yang dibagikan pasanganmu saat ini.', style: kSmall),
+          )
         else ...[
           PartnerSnapshotView(snapshot: snap, today: today),
+          const SizedBox(height: 12),
+          PinkCard(
+            color: AppColors.petal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(PhosphorIconsFill.sparkle, color: AppColors.rose, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(partnerTip(snap.phase), style: const TextStyle(height: 1.35))),
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
           CareChecklistCard(phase: snap.phase, partnerName: st.partnerName),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => showAllLoveLettersModal(context),
+            icon: const Icon(PhosphorIconsRegular.envelope),
+            label: Text('Kotak Surat Cinta ($notesCount)'),
+          ),
+        ),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(

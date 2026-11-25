@@ -1,5 +1,6 @@
 // lib/features/log/log_screen.dart
-// Catat aliran haid, gejala, suasana hati, dan catatan untuk satu hari.
+// Catat aliran haid (otomatis terhubung ke riwayat siklus), tes ovulasi (LH/BBT),
+// gejala, suasana hati, dan catatan harian.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
@@ -12,6 +13,7 @@ import '../../core/note_labels.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../domain/cycle_engine.dart';
+import '../../domain/cycle_sync.dart';
 import '../../domain/day_note.dart';
 
 Future<void> openLog(BuildContext context, DateTime date) =>
@@ -28,10 +30,13 @@ class LogScreen extends ConsumerStatefulWidget {
 class _LogScreenState extends ConsumerState<LogScreen> {
   late DateTime _date;
   FlowLevel? _flow;
+  bool _ovulationPositive = false;
   Set<String> _symptoms = {};
   Set<String> _moods = {};
   final _note = TextEditingController();
   bool _existing = false;
+  bool _markAsPeriodStart = false;
+  bool _markAsPeriodEnd = false;
 
   @override
   void initState() {
@@ -50,9 +55,28 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     final n = ref.read(notesProvider)[_date];
     _existing = n != null;
     _flow = n?.flow;
+    _ovulationPositive = n?.ovulationPositive ?? false;
     _symptoms = {...?n?.symptoms};
     _moods = {...?n?.moods};
     _note.text = n?.note ?? '';
+    _markAsPeriodStart = false;
+    _markAsPeriodEnd = false;
+  }
+
+  void _selectFlow(FlowLevel? level) {
+    final next = _flow == level ? null : level;
+    final logs = ref.read(periodLogsProvider);
+    final defPeriodLen = ref.read(settingsProvider).periodLength;
+    setState(() {
+      _flow = next;
+      _markAsPeriodStart = shouldAutoStartPeriod(
+        logs,
+        _date,
+        next,
+        defaultPeriodLen: defPeriodLen,
+      );
+      if (next == null) _markAsPeriodEnd = false;
+    });
   }
 
   Future<void> _pickDate() async {
@@ -74,12 +98,37 @@ class _LogScreenState extends ConsumerState<LogScreen> {
     final n = DayNote(
       date: _date,
       flow: _flow,
+      ovulationPositive: _ovulationPositive,
       symptoms: {..._symptoms},
       moods: {..._moods},
       note: _note.text.trim(),
     );
     await ref.read(notesProvider.notifier).save(n);
+
+    var cycleChanged = false;
+    final logs = ref.read(periodLogsProvider);
+    final openPeriod = activeOpenPeriod(logs, _date);
+
+    if (_markAsPeriodStart && _flow != null) {
+      final added = await ref.read(periodLogsProvider.notifier).addStart(_date);
+      cycleChanged = added;
+    } else if (_markAsPeriodEnd && openPeriod != null && _date.isAfter(dateOnly(openPeriod.start))) {
+      await ref.read(periodLogsProvider.notifier).setEnd(openPeriod.start, _date);
+      cycleChanged = true;
+    }
+
     if (!mounted) return;
+    if (cycleChanged || _ovulationPositive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            cycleChanged
+                ? 'Catatan & tanggal haid disimpan. Kalender & prediksi diperbarui 🎀'
+                : 'Catatan & tes ovulasi disimpan. Perkiraan haid disesuaikan ✨',
+          ),
+        ),
+      );
+    }
     Navigator.of(context).pop();
   }
 
@@ -109,6 +158,16 @@ class _LogScreenState extends ConsumerState<LogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final logs = ref.watch(periodLogsProvider);
+    final defPeriodLen = ref.watch(settingsProvider).periodLength;
+    final containing = logContainingDate(logs, _date, defaultPeriodLen: defPeriodLen);
+    final openPeriod = activeOpenPeriod(logs, _date);
+    final canStartPeriod = _flow != null &&
+        containing == null &&
+        shouldAutoStartPeriod(logs, _date, _flow, defaultPeriodLen: defPeriodLen);
+    final canEndPeriod =
+        _flow != null && openPeriod != null && _date.isAfter(dateOnly(openPeriod.start));
+
     return AppScaffold(
       body: Column(
         children: [
@@ -145,17 +204,57 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 ),
                 const SectionTitle('Aliran haid'),
                 PinkCard(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final e in kFlowLabels.entries)
-                        PinkChoiceChip(
-                          label: e.value,
-                          selected: _flow == e.key,
-                          onTap: () => setState(() => _flow = _flow == e.key ? null : e.key),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final e in kFlowLabels.entries)
+                            PinkChoiceChip(
+                              label: e.value,
+                              selected: _flow == e.key,
+                              onTap: () => _selectFlow(e.key),
+                            ),
+                        ],
+                      ),
+                      if (canStartPeriod) ...[
+                        const Divider(height: 24, color: AppColors.petal),
+                        SwitchRow(
+                          title: 'Tandai hari pertama haid',
+                          subtitle: 'Otomatis perbarui cincin siklus & kalender prediksi',
+                          value: _markAsPeriodStart,
+                          onChanged: (v) => setState(() {
+                            _markAsPeriodStart = v;
+                            if (v) _markAsPeriodEnd = false;
+                          }),
                         ),
+                      ] else if (canEndPeriod) ...[
+                        const Divider(height: 24, color: AppColors.petal),
+                        SwitchRow(
+                          title: 'Tandai haid selesai di tanggal ini',
+                          subtitle: 'Haid dimulai ${fmtDayMonth(openPeriod.start)}',
+                          value: _markAsPeriodEnd,
+                          onChanged: (v) => setState(() => _markAsPeriodEnd = v),
+                        ),
+                      ] else if (containing != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          'Masuk dalam haid tercatat (${fmtDayMonth(containing.start)}).',
+                          style: kSmall,
+                        ),
+                      ],
                     ],
+                  ),
+                ),
+                const SectionTitle('Tes ovulasi (LH / BBT)'),
+                PinkCard(
+                  child: SwitchRow(
+                    title: 'Hasil tes ovulasi positif (+)',
+                    subtitle: 'Membantu prediksi tanggal haid berikutnya jauh lebih akurat',
+                    value: _ovulationPositive,
+                    onChanged: (v) => setState(() => _ovulationPositive = v),
                   ),
                 ),
                 const SectionTitle('Gejala'),
@@ -215,7 +314,7 @@ class _LogScreenState extends ConsumerState<LogScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Catatan ini hanya tersimpan di perangkatmu dan tidak dibagikan ke pasangan.',
+                  'Catatan ini hanya tersimpan di perangkatmu dan tidak pernah dibagikan ke pasangan.',
                   textAlign: TextAlign.center,
                   style: kSmall,
                 ),

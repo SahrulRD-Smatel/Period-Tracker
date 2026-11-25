@@ -1,8 +1,8 @@
 // test/love_notes_and_care_guide_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mens_app/domain/care_guide.dart';
-import 'package:mens_app/domain/cycle_engine.dart';
-import 'package:mens_app/domain/love_notes.dart';
+import 'package:period_tracker/domain/care_guide.dart';
+import 'package:period_tracker/domain/cycle_engine.dart';
+import 'package:period_tracker/domain/love_notes.dart';
 
 void main() {
   group('LoveNote', () {
