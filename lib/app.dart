@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'application/providers.dart';
 import 'core/app_lock.dart';
+import 'core/platform_ui.dart';
 import 'core/theme.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/shell/app_shell.dart';
@@ -90,7 +91,7 @@ class _MensAppState extends ConsumerState<MensApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Siklusku',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
+      theme: buildAppTheme(platform: platformOverrideFor(ref.watch(uiStyleProvider))),
       locale: const Locale('id'),
       supportedLocales: const [Locale('id'), Locale('en')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../application/providers.dart';
+import '../../core/adaptive.dart';
 import '../../core/dialogs.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -27,6 +28,7 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
   final _code = TextEditingController();
   String? _error;
   bool _busy = false;
+  bool _asOwner = true; // pemilih peran (belum tersambung): pemilik data / pasangan
 
   @override
   void dispose() {
@@ -117,11 +119,10 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
     final isDemo = repo.isDemo;
     final authErr = isDemo ? null : SupabaseService.lastAuthError;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+    return AdaptivePage(
+      title: 'Pasangan',
+      subtitle: _subtitle(st),
       children: [
-        BowHeader(title: 'Pasangan', subtitle: _subtitle(st)),
-        const SizedBox(height: 14),
         PinkCard(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           color: (isDemo || authErr != null) ? AppColors.petal : AppColors.blush,
@@ -223,6 +224,13 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
             ),
           ),
           const SizedBox(height: 14),
+          AdaptiveSegmented<bool>(
+            options: const {true: 'Aku pemilik data', false: 'Aku pasangan'},
+            value: _asOwner,
+            onChanged: (v) => setState(() => _asOwner = v),
+          ),
+          const SizedBox(height: 14),
+          if (_asOwner)
           PinkCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +249,7 @@ class _PartnerScreenState extends ConsumerState<PartnerScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          if (!_asOwner)
           PinkCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -6,6 +6,7 @@ import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../application/providers.dart';
+import '../../core/adaptive.dart';
 import '../../core/formatters.dart';
 import '../../core/note_labels.dart';
 import '../../core/phase_style.dart';
@@ -93,13 +94,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
             if ((v != null && v.phase == CyclePhase.ovulation) || (note?.ovulationPositive ?? false))
               const Positioned(
-                top: 2,
-                right: 3,
+                top: 4,
+                right: 5,
                 child: Icon(PhosphorIconsFill.sparkle, size: 9, color: AppColors.mauve),
               ),
             if (v != null && v.isFertile && v.phase == CyclePhase.menstrual)
               Positioned(
-                bottom: 2,
+                bottom: 5,
                 left: 8,
                 child: Container(
                   width: 5,
@@ -113,12 +114,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ),
             if (hasNote)
               Positioned(
-                bottom: 2,
+                bottom: 5,
                 right: 8,
                 child: Container(
                   width: 5,
                   height: 5,
-                  decoration: const BoxDecoration(color: AppColors.mauve, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: isSelected ? AppColors.white : fg, shape: BoxShape.circle),
                 ),
               ),
           ],
@@ -126,11 +127,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+    return AdaptivePage(
+      title: 'Kalender',
+      subtitle: 'Warna menunjukkan fase siklusmu',
       children: [
-        const BowHeader(title: 'Kalender', subtitle: 'Warna menunjukkan fase siklusmu'),
-        const SizedBox(height: 16),
         PinkCard(
           padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
           child: TableCalendar<void>(
@@ -140,7 +140,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             focusedDay: _focused,
             startingDayOfWeek: StartingDayOfWeek.monday,
             availableGestures: AvailableGestures.horizontalSwipe,
-            rowHeight: 52,
+            rowHeight: 56,
             selectedDayPredicate: (d) => _selected != null && isSameDay(_selected, d),
             onDaySelected: (selected, focused) {
               setState(() {
@@ -202,14 +202,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ? containing
         : (openPeriod != null && d.isAfter(dateOnly(openPeriod.start)) ? openPeriod : null);
 
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      backgroundColor: AppColors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+    showAppSheet<void>(
+      context,
       builder: (sheetContext) {
         final st = v == null ? null : phaseStyle(v.phase);
         return SingleChildScrollView(

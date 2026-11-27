@@ -99,7 +99,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Hubungkan pasangan demo
-    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -200));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Buat kode undangan'));
     await tester.pumpAndSettle();
@@ -108,7 +108,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Gulir ke bawah di tab Pasangan
-    await tester.drag(find.byType(ListView), const Offset(0, -800));
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -800));
     await tester.pumpAndSettle();
 
     // Checklist perhatian muncul
@@ -118,6 +118,7 @@ void main() {
     // Centang aksi perhatian pertama
     final firstItem = find.text('Sajikan Minuman Hangat');
     await tester.ensureVisible(firstItem);
+    await tester.pumpAndSettle();
     await tester.tap(firstItem);
     await tester.pumpAndSettle();
 

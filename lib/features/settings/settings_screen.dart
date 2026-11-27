@@ -9,8 +9,10 @@ import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../application/data_actions.dart';
 import '../../application/providers.dart';
+import '../../core/adaptive.dart';
 import '../../core/app_lock.dart';
 import '../../core/dialogs.dart';
+import '../../core/platform_ui.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../domain/app_settings.dart';
@@ -114,14 +116,8 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _explain(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      backgroundColor: AppColors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+    showAppSheet<void>(
+      context,
       builder: (_) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
         child: Column(
@@ -172,9 +168,33 @@ class SettingsScreen extends ConsumerWidget {
     }
 
     final sections = <Widget>[
-      const BowHeader(title: 'Setelan', subtitle: 'Atur siklus, pengingat, dan datamu'),
+      const SectionTitle('Tampilan'),
+      GroupCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Gaya antarmuka', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            const Text(
+              'Otomatis mengikuti perangkatmu (iOS atau Android). Pilih salah satu untuk '
+              'pratinjau gaya lain, mis. saat menjalankan di Windows.',
+              style: kSmall,
+            ),
+            const SizedBox(height: 12),
+            AdaptiveSegmented<UiStyle>(
+              options: const {
+                UiStyle.auto: 'Otomatis',
+                UiStyle.ios: 'iOS',
+                UiStyle.android: 'Android',
+              },
+              value: ref.watch(uiStyleProvider),
+              onChanged: (v) => ref.read(uiStyleProvider.notifier).state = v,
+            ),
+          ],
+        ),
+      ),
       const SectionTitle('Siklusku'),
-      PinkCard(
+      GroupCard(
         child: Column(
           children: [
             StepperTile(
@@ -186,7 +206,7 @@ class SettingsScreen extends ConsumerWidget {
               unit: 'hari',
               onChanged: (v) => set.update((x) => x.copyWith(cycleLength: v)),
             ),
-            const Divider(height: 28, color: AppColors.petal),
+            GroupDivider(28),
             StepperTile(
               title: 'Lama haid',
               subtitle: 'Perkiraan awal',
@@ -196,7 +216,7 @@ class SettingsScreen extends ConsumerWidget {
               unit: 'hari',
               onChanged: (v) => set.update((x) => x.copyWith(periodLength: v)),
             ),
-            const Divider(height: 28, color: AppColors.petal),
+            GroupDivider(28),
             StepperTile(
               title: 'Fase luteal',
               subtitle: 'Ovulasi → haid berikutnya. Biarkan 14 bila ragu.',
@@ -216,7 +236,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
       const SectionTitle('Pengingat'),
-      PinkCard(
+      GroupCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -226,7 +246,7 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (v) => set.update((x) => x.copyWith(remindPeriod: v)),
             ),
             if (s.remindPeriod) ...[
-              const Divider(height: 20, color: AppColors.petal),
+              GroupDivider(20),
               SwitchRow(
                 title: 'Tepat di hari perkiraan haid',
                 subtitle: 'Pengingat pagi jam 08:00 saat haid mulai',
@@ -234,14 +254,14 @@ class SettingsScreen extends ConsumerWidget {
                 onChanged: (v) => set.update((x) => x.copyWith(remindPeriodDayOf: v)),
               ),
             ],
-            const Divider(height: 24, color: AppColors.petal),
+            GroupDivider(24),
             SwitchRow(
               title: 'Masa subur dimulai',
               value: s.remindFertile,
               onChanged: (v) => set.update((x) => x.copyWith(remindFertile: v)),
             ),
             if (s.remindFertile) ...[
-              const Divider(height: 20, color: AppColors.petal),
+              GroupDivider(20),
               SwitchRow(
                 title: 'Puncak ovulasi',
                 subtitle: 'Pengingat pagi jam 08:00 di hari ovulasi',
@@ -249,22 +269,16 @@ class SettingsScreen extends ConsumerWidget {
                 onChanged: (v) => set.update((x) => x.copyWith(remindOvulationDayOf: v)),
               ),
             ],
-            const Divider(height: 24, color: AppColors.petal),
+            GroupDivider(24),
             const Text('Ingatkan berapa hari sebelumnya',
                 style: TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final d in const [1, 2, 3])
-                  PinkChoiceChip(
-                    label: '$d hari',
-                    selected: s.remindDaysBefore == d,
-                    onTap: () => set.update((x) => x.copyWith(remindDaysBefore: d)),
-                  ),
-              ],
+            const SizedBox(height: 10),
+            AdaptiveSegmented<int>(
+              options: const {1: '1 hari', 2: '2 hari', 3: '3 hari'},
+              value: s.remindDaysBefore,
+              onChanged: (d) => set.update((x) => x.copyWith(remindDaysBefore: d)),
             ),
-            const Divider(height: 24, color: AppColors.petal),
+            GroupDivider(24),
             SwitchRow(
               title: 'Teks notifikasi netral',
               subtitle:
@@ -286,7 +300,7 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
             if (notifSupported) ...[
-              const Divider(height: 20, color: AppColors.petal),
+              GroupDivider(20),
               ActionRow(
                 icon: PhosphorIconsRegular.bell,
                 label: 'Kirim notifikasi uji coba',
@@ -297,7 +311,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
       const SectionTitle('Keamanan'),
-      PinkCard(
+      GroupCard(
         child: Column(
           children: [
             SwitchRow(
@@ -307,7 +321,7 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (v) => _toggleAppLock(context, ref, v),
             ),
             if (s.appLock) ...[
-              const Divider(height: 12, color: AppColors.petal),
+              GroupDivider(12),
               ActionRow(
                 icon: PhosphorIconsRegular.lockKey,
                 label: 'Atur / ganti PIN cadangan 4-angka',
@@ -318,7 +332,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
       const SectionTitle('Data'),
-      PinkCard(
+      GroupCard(
         child: Column(
           children: [
             ActionRow(
@@ -326,13 +340,13 @@ class SettingsScreen extends ConsumerWidget {
               label: 'Salin cadangan',
               onTap: () => _copyBackup(context, ref),
             ),
-            const Divider(height: 1, color: AppColors.petal),
+            GroupDivider(1),
             ActionRow(
               icon: PhosphorIconsRegular.arrowCounterClockwise,
               label: 'Pulihkan dari cadangan',
               onTap: () => _restore(context, ref),
             ),
-            const Divider(height: 1, color: AppColors.petal),
+            GroupDivider(1),
             ActionRow(
               icon: PhosphorIconsRegular.trash,
               label: 'Hapus semua data',
@@ -343,7 +357,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
       const SectionTitle('Tentang'),
-      PinkCard(
+      GroupCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -352,7 +366,7 @@ class SettingsScreen extends ConsumerWidget {
               label: 'Cara kerja prediksi',
               onTap: () => _explain(context),
             ),
-            const Divider(height: 24, color: AppColors.petal),
+            GroupDivider(24),
             const Text('Siklusku $appVersion 🎀', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             const Text(
@@ -365,8 +379,9 @@ class SettingsScreen extends ConsumerWidget {
       ),
     ];
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+    return AdaptivePage(
+      title: 'Setelan',
+      subtitle: 'Atur siklus, pengingat, dan datamu',
       children: [
         for (var i = 0; i < sections.length; i++)
           sections[i]

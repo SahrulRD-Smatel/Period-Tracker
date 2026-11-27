@@ -1,8 +1,11 @@
 // lib/core/widgets.dart
 // Komponen UI bersama bergaya coquette mewah (Dribbble / Figma tier).
+import 'package:flutter/cupertino.dart' show CupertinoSwitch;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
+import 'platform_ui.dart';
 import 'theme.dart';
 
 /// Kartu bernuansa mewah dengan kedalaman berlapis (gradient + dual-shadow + micro-border).
@@ -260,11 +263,20 @@ class SectionTitle extends StatelessWidget {
   final String text;
   const SectionTitle(this.text, {super.key});
 
+  // iOS: kapital kecil abu di atas kartu. Android (M3): label bagian berwarna aksen.
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-        child: Text(text, style: kHeading.copyWith(fontSize: 20, letterSpacing: -0.4)),
-      );
+  Widget build(BuildContext context) {
+    final ios = isCupertino(context);
+    return Padding(
+      padding: ios ? const EdgeInsets.fromLTRB(16, 20, 16, 6) : const EdgeInsets.fromLTRB(8, 20, 8, 8),
+      child: Text(
+        ios ? text.toUpperCase() : text,
+        style: ios
+            ? kSmall.copyWith(fontSize: 12.5, fontWeight: FontWeight.w500, color: AppColors.mauveSoft)
+            : kSmall.copyWith(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.rose),
+      ),
+    );
+  }
 }
 
 /// Tombol mewah dengan gradien rose dan bayangan glowing yang empuk.
@@ -444,42 +456,68 @@ class StepperTile extends StatelessWidget {
     required this.onChanged,
   });
 
-  Widget _btn(IconData icon, bool enabled, VoidCallback onTap) => Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: enabled
-              ? const [
-                  BoxShadow(
-                    color: AppColors.shadowContact,
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
-                  ),
-                ]
-              : null,
+  // Android (M3): tombol tonal bulat di kiri-kanan angka.
+  Widget _btn(IconData icon, bool enabled, VoidCallback onTap) => IconButton(
+        onPressed: enabled ? onTap : null,
+        icon: Icon(icon, size: 18),
+        style: IconButton.styleFrom(
+          backgroundColor: enabled ? AppColors.petal : AppColors.blush,
+          foregroundColor: enabled ? AppColors.rose : AppColors.mist,
+          padding: const EdgeInsets.all(8),
         ),
-        child: IconButton(
-          onPressed: enabled ? onTap : null,
-          icon: Icon(icon, size: 18),
-          style: IconButton.styleFrom(
-            backgroundColor: enabled ? AppColors.petal : AppColors.blush,
-            foregroundColor: enabled ? AppColors.rose : AppColors.mist,
-            padding: const EdgeInsets.all(8),
-          ),
+      );
+
+  // iOS: kontrol stepper bersegmen (− | +) seperti UIStepper.
+  Widget _seg(IconData icon, bool enabled, VoidCallback onTap) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick();
+                onTap();
+              }
+            : null,
+        child: SizedBox(
+          width: 46,
+          height: 32,
+          child: Icon(icon, size: 18, color: enabled ? AppColors.mauve : AppColors.mist),
         ),
       );
 
   @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final ios = isCupertino(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              if (subtitle != null) Text(subtitle!, style: kSmall),
+            ],
+          ),
+        ),
+        if (ios) ...[
+          Text(
+            '$value $unit',
+            style: kSmall.copyWith(fontWeight: FontWeight.w600, color: AppColors.mauve),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.track,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                if (subtitle != null) Text(subtitle!, style: kSmall),
+                _seg(PhosphorIconsRegular.minus, value > min, () => onChanged(value - 1)),
+                Container(width: 1, height: 16, color: AppColors.mist),
+                _seg(PhosphorIconsRegular.plus, value < max, () => onChanged(value + 1)),
               ],
             ),
           ),
+        ] else ...[
           _btn(PhosphorIconsRegular.minus, value > min, () => onChanged(value - 1)),
           SizedBox(
             width: 76,
@@ -497,7 +535,9 @@ class StepperTile extends StatelessWidget {
           ),
           _btn(PhosphorIconsRegular.plus, value < max, () => onChanged(value + 1)),
         ],
-      );
+      ],
+    );
+  }
 }
 
 /// Baris dengan saklar modern adaptif.
@@ -515,21 +555,35 @@ class SwitchRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                if (subtitle != null) Text(subtitle!, style: kSmall),
-              ],
+  Widget build(BuildContext context) {
+    // iOS: CupertinoSwitch. Android: Material 3 Switch dengan ikon centang pada thumb.
+    final Widget control = isCupertino(context)
+        ? CupertinoSwitch(value: value, onChanged: onChanged, activeColor: AppColors.rose)
+        : Switch(
+            value: value,
+            onChanged: onChanged,
+            thumbIcon: WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.selected)
+                  ? const Icon(Icons.check, color: AppColors.rose)
+                  : null,
             ),
+          );
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              if (subtitle != null) Text(subtitle!, style: kSmall),
+            ],
           ),
-          const SizedBox(width: 8),
-          Switch.adaptive(value: value, onChanged: onChanged),
-        ],
-      );
+        ),
+        const SizedBox(width: 8),
+        control,
+      ],
+    );
+  }
 }
 
 /// Kotak statistik bernuansa glassmorphic untuk layar statistik.
@@ -602,39 +656,43 @@ class ActionRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: danger ? AppColors.danger.withValues(alpha: 0.1) : AppColors.petal,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: danger ? AppColors.danger : AppColors.rose,
+  Widget build(BuildContext context) {
+    final ios = isCupertino(context);
+    final tint = danger ? AppColors.danger : AppColors.rose;
+    // iOS: ikon polos seperti baris daftar Pengaturan. Android: ikon dalam lingkaran tonal.
+    final Widget leading = ios
+        ? Icon(icon, size: 21, color: tint)
+        : Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: danger ? AppColors.danger.withValues(alpha: 0.1) : AppColors.petal,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: tint),
+          );
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
+        child: Row(
+          children: [
+            leading,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: ios ? FontWeight.w500 : FontWeight.w600,
+                  fontSize: ios ? 16 : 14.5,
+                  color: danger ? AppColors.danger : AppColors.mauve,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.5,
-                    color: danger ? AppColors.danger : AppColors.mauve,
-                  ),
-                ),
-              ),
-              const Icon(PhosphorIconsRegular.caretRight, color: AppColors.mist, size: 16),
-            ],
-          ),
+            ),
+            Icon(PhosphorIconsRegular.caretRight, color: AppColors.mist, size: ios ? 14 : 16),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }

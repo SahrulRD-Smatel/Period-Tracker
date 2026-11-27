@@ -23,3 +23,10 @@
 1. Push notification jarak jauh (FCM/APNs Edge Function) saat aplikasi pasangan sedang tertutup total.
 2. Migrasi penyimpanan lokal ke Drift (SQLite terenkripsi) & ekspor berkas via `share_plus` / PDF dokter.
 3. Widget Home Screen / Lock Screen netral (`home_widget`).
+
+## UI adaptif iOS & Android (belum dijalankan di perangkat)
+- `core/platform_ui.dart`: `uiStyleProvider` (Otomatis / iOS / Android, disimpan di memori). `app.dart` meneruskannya ke `ThemeData.platform`.
+- `core/adaptive.dart`: `AdaptivePage` (iOS: `CupertinoSliverNavigationBar` judul besar; Android: `SliverAppBar.large`), `GroupCard`/`GroupDivider`, `AdaptiveSegmented`, `showAppSheet`, `pickDateAdaptive`.
+- `widgets.dart`: `SectionTitle`, `SwitchRow` (CupertinoSwitch / M3 Switch), `StepperTile` (UIStepper / tombol tonal), `ActionRow` adaptif. `dialogs.dart`: aksi Cupertino di iOS.
+- `app_shell.dart`: iOS tab bar melayang blur; Android `NavigationBar` M3. Tab selain Beranda memakai latar polos.
+- Kalender, Statistik, Pasangan (pemilih peran), Setelan (bagian Tampilan + segmen pengingat) memakai komponen adaptif. Tes: `find.byType(ListView)` -> `CustomScrollView`.

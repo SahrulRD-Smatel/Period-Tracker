@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../application/providers.dart';
+import '../../core/adaptive.dart';
 import '../../core/app_scaffold.dart';
 import '../../core/dialogs.dart';
 import '../../core/formatters.dart';
@@ -81,11 +82,12 @@ class _LogScreenState extends ConsumerState<LogScreen> {
 
   Future<void> _pickDate() async {
     final today = ref.read(todayProvider);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _date.isAfter(today) ? today : _date,
-      firstDate: today.subtract(const Duration(days: 365)),
-      lastDate: today,
+    final picked = await pickDateAdaptive(
+      context,
+      initial: _date.isAfter(today) ? today : _date,
+      first: today.subtract(const Duration(days: 365)),
+      last: today,
+      help: 'Pilih tanggal',
     );
     if (picked == null) return;
     setState(() {

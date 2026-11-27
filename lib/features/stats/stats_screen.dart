@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../application/providers.dart';
+import '../../core/adaptive.dart';
 import '../../core/formatters.dart';
 import '../../core/note_labels.dart';
 import '../../core/theme.dart';
@@ -26,14 +27,10 @@ class StatsScreen extends ConsumerWidget {
     final hasNotesInsights =
         stats.totalNotes > 0 && (stats.topSymptoms.isNotEmpty || stats.topMoods.isNotEmpty);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+    return AdaptivePage(
+      title: 'Statistik',
+      subtitle: 'Pola siklusmu dari waktu ke waktu',
       children: [
-        const BowHeader(title: 'Statistik', subtitle: 'Pola siklusmu dari waktu ke waktu')
-            .animate()
-            .fadeIn(duration: 300.ms)
-            .slideY(begin: -0.04, curve: Curves.easeOut),
-        const SizedBox(height: 16),
         if (!stats.hasData) ...[
           const _EmptyStats()
               .animate()

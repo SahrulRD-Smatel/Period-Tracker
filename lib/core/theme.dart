@@ -1,5 +1,7 @@
 // lib/core/theme.dart
 // Tema default: PUTIH + PINK COQUETTE. Semua warna aplikasi HARUS diambil dari AppColors.
+import 'package:flutter/cupertino.dart' show CupertinoThemeData;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 class AppColors {
@@ -93,7 +95,9 @@ const kMicroCaps = TextStyle(
   letterSpacing: 1.4,
 );
 
-ThemeData buildAppTheme() {
+ThemeData buildAppTheme({TargetPlatform? platform}) {
+  final p = platform ?? defaultTargetPlatform;
+  final ios = p == TargetPlatform.iOS || p == TargetPlatform.macOS;
   final scheme = ColorScheme.fromSeed(seedColor: AppColors.pink).copyWith(
     primary: AppColors.rose,
     onPrimary: AppColors.white,
@@ -106,6 +110,7 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.blush,
+    platform: platform,
   );
   return base.copyWith(
     textTheme: base.textTheme.apply(bodyColor: AppColors.mauve, displayColor: AppColors.mauve),
@@ -129,7 +134,31 @@ ThemeData buildAppTheme() {
         textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
       ),
     ),
+    splashFactory: ios ? NoSplash.splashFactory : null,
+    cupertinoOverrideTheme: const CupertinoThemeData(primaryColor: AppColors.rose),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.blush,
+      surfaceTintColor: AppColors.transparent,
+      foregroundColor: AppColors.mauve,
+      scrolledUnderElevation: 0,
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: AppColors.white,
+      surfaceTintColor: AppColors.transparent,
+      indicatorColor: AppColors.petal,
+      iconTheme: WidgetStateProperty.resolveWith(
+        (s) => IconThemeData(color: s.contains(WidgetState.selected) ? AppColors.rose : AppColors.mauve),
+      ),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (s) => TextStyle(
+          fontSize: 12,
+          fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+          color: s.contains(WidgetState.selected) ? AppColors.mauve : AppColors.mauveSoft,
+        ),
+      ),
+    ),
     switchTheme: SwitchThemeData(
+      trackOutlineColor: WidgetStateProperty.all(AppColors.transparent),
       trackColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected) ? AppColors.rose : AppColors.ribbon,
       ),

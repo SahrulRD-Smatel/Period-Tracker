@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
 import '../../application/providers.dart';
+import '../../core/adaptive.dart';
 import '../../core/app_scaffold.dart';
 import '../../core/formatters.dart';
 import '../../core/theme.dart';
@@ -44,12 +45,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Future<void> _pickDate() async {
     final today = ref.read(todayProvider);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _lastStart ?? today,
-      firstDate: today.subtract(const Duration(days: 365)),
-      lastDate: today,
-      helpText: 'Hari pertama haid terakhir',
+    final picked = await pickDateAdaptive(
+      context,
+      initial: _lastStart ?? today,
+      first: today.subtract(const Duration(days: 365)),
+      last: today,
+      help: 'Hari pertama haid terakhir',
     );
     if (picked != null) setState(() => _lastStart = picked);
   }

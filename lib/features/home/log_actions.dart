@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/providers.dart';
+import '../../core/adaptive.dart';
 import '../../core/dialogs.dart';
 import '../../core/formatters.dart';
 import '../../domain/cycle_engine.dart';
@@ -66,12 +67,12 @@ Future<void> pickAndLogPeriodStart(BuildContext context, WidgetRef ref) async {
     }
   }
 
-  final picked = await showDatePicker(
-    context: context,
-    initialDate: initial,
-    firstDate: first,
-    lastDate: today,
-    helpText: 'Hari pertama haid',
+  final picked = await pickDateAdaptive(
+    context,
+    initial: initial,
+    first: first,
+    last: today,
+    help: 'Hari pertama haid',
   );
   if (picked == null || !context.mounted) return;
   // Pengguna eksplisit memilih "Hari pertama haid" dari kalender -> langsung terapkan ke episode aktif.

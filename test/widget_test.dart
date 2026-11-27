@@ -113,7 +113,7 @@ void main() {
     await pumpApp(tester, {'app_settings_v1': _settingsDone});
     await openTab(tester, 'Pasangan');
 
-    await tester.drag(find.byType(ListView), const Offset(0, -250));
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -250));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Buat kode undangan'));
     await tester.pumpAndSettle();
